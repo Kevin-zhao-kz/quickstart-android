@@ -53,7 +53,9 @@ workflows:
           mkdir -p admob/src/main/java/com/google/firebase/quickstart/admob
           echo "package com.google.firebase.quickstart.admob; import android.app.Activity; import android.os.Bundle; import android.widget.TextView; public class MainActivity extends Activity { protected void onCreate(Bundle b){ super.onCreate(b); TextView t=new TextView(this); t.setText(\"Swiss Tournament Ready! Build OK!\"); setContentView(t); } }" > admob/src/main/java/com/google/firebase/quickstart/admob/MainActivity.java
           sed -i '' 's/9.6.1/8.7/' gradle/wrapper/gradle-wrapper.properties || sed -i 's/9.6.1/8.7/' gradle/wrapper/gradle-wrapper.properties
-          chmod +x gradlew
+rm -f build.gradle.kts settings.gradle.kts
+rm -f build.gradle settings.gradle
+chmod +x gradlew
           ./gradlew :admob:assembleDebug --stacktrace
     artifacts:
       - "**/*.apk"
