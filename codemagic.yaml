@@ -8,8 +8,50 @@ workflows:
     scripts:
       - name: Build Debug APK
         script: |
-          echo '{"project_info":{"project_number":"123","project_id":"dummy"},"client":[{"client_info":{"mobilesdk_app_id":"1:123:android:abc","android_client_info":{"package_name":"com.google.firebase.quickstart.admob"}},"oauth_client":[],"api_key":[{"current_key":"abc"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > admob/google-services.json
-          echo '{"project_info":{"project_number":"123","project_id":"dummy"},"client":[{"client_info":{"mobilesdk_app_id":"1:123:android:abc","android_client_info":{"package_name":"com.google.firebase.quickstart"}}},"oauth_client":[],"api_key":[{"current_key":"abc"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > google-services.json
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories { google(); mavenCentral() }
+          }
+          include ':admob'
+          EOF
+          mkdir -p admob/src/main
+          cat > admob/build.gradle <<'EOF'
+          plugins { id 'com.android.application' version '8.2.2' }
+          android {
+              namespace 'com.google.firebase.quickstart.admob'
+              compileSdk 34
+              defaultConfig {
+                  applicationId "com.google.firebase.quickstart.admob"
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          EOF
+          cat > admob/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application android:label="Swiss Tournament">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+          mkdir -p admob/src/main/java/com/google/firebase/quickstart/admob
+          echo "package com.google.firebase.quickstart.admob; import android.app.Activity; import android.os.Bundle; import android.widget.TextView; public class MainActivity extends Activity { protected void onCreate(Bundle b){ super.onCreate(b); TextView t=new TextView(this); t.setText(\"Swiss Tournament Ready! Build OK!\"); setContentView(t); } }" > admob/src/main/java/com/google/firebase/quickstart/admob/MainActivity.java
           chmod +x gradlew
           ./gradlew :admob:assembleDebug --stacktrace
     artifacts:
