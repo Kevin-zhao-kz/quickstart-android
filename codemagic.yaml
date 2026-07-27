@@ -8,6 +8,7 @@ workflows:
     scripts:
       - name: Build Debug APK
         script: |
+          mkdir -p admob/src/main/java/com/google/firebase/quickstart/admob
           cat > admob/build.gradle <<'EOF'
           plugins { id 'com.android.application' }
           android {
@@ -42,11 +43,15 @@ workflows:
               </application>
           </manifest>
           EOF
-          mkdir -p admob/src/main/java/com/google/firebase/quickstart/admob
           echo "package com.google.firebase.quickstart.admob; import android.app.Activity; import android.os.Bundle; import android.widget.TextView; public class MainActivity extends Activity { protected void onCreate(Bundle b){ super.onCreate(b); TextView t=new TextView(this); t.setText(\"Swiss Tournament Ready! Build OK!\"); setContentView(t); } }" > admob/src/main/java/com/google/firebase/quickstart/admob/MainActivity.java
           sed -i '' 's/9.6.1/8.7/' gradle/wrapper/gradle-wrapper.properties || sed -i 's/9.6.1/8.7/' gradle/wrapper/gradle-wrapper.properties
-          rm -f build.gradle.kts settings.gradle.kts
-          rm -f build.gradle settings.gradle
+          rm -f build.gradle.kts build.gradle settings.gradle
+          cat > settings.gradle.kts <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name = "quickstart"
+          include(":admob")
+          EOF
           chmod +x gradlew
           ./gradlew :admob:assembleDebug --stacktrace
     artifacts:
