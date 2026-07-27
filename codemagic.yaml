@@ -8,6 +8,8 @@ workflows:
     scripts:
       - name: Build Debug APK
         script: |
+          echo '{"project_info":{"project_number":"123","project_id":"dummy"},"client":[{"client_info":{"mobilesdk_app_id":"1:123:android:abc","android_client_info":{"package_name":"com.google.firebase.quickstart.admob"}},"oauth_client":[],"api_key":[{"current_key":"abc"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > admob/google-services.json
+          echo '{"project_info":{"project_number":"123","project_id":"dummy"},"client":[{"client_info":{"mobilesdk_app_id":"1:123:android:abc","android_client_info":{"package_name":"com.google.firebase.quickstart"}}},"oauth_client":[],"api_key":[{"current_key":"abc"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > google-services.json
           chmod +x gradlew
           ./gradlew :admob:assembleDebug --stacktrace
     artifacts:
