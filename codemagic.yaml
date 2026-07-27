@@ -1,61 +1,28 @@
-workflows:
-  android-workflow:
-    name: Build APK
-    max_build_duration: 60
-    instance_type: mac_mini_m2
-    environment:
-      java: 17
-    scripts:
-      - name: Build Debug APK
-        script: |
-          cat > settings.gradle <<'EOF'
-          pluginManagement {
-              repositories { google(); mavenCentral(); gradlePluginPortal() }
-          }
-          dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories { google(); mavenCentral() }
-          }
-          include ':admob'
-          EOF
-          mkdir -p admob/src/main
-          cat > admob/build.gradle <<'EOF'
-          plugins { id 'com.android.application' version '8.2.2' }
-          android {
-              namespace 'com.google.firebase.quickstart.admob'
-              compileSdk 34
-              defaultConfig {
-                  applicationId "com.google.firebase.quickstart.admob"
-                  minSdk 24
-                  targetSdk 34
-                  versionCode 1
-                  versionName "1.0"
-              }
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
-          }
-          EOF
-          cat > admob/src/main/AndroidManifest.xml <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="Swiss Tournament">
-                  <activity android:name=".MainActivity" android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/>
-                          <category android:name="android.intent.category.LAUNCHER"/>
-                      </intent-filter>
-                  </activity>
-              </application>
-          </manifest>
-          EOF
-          mkdir -p admob/src/main/java/com/google/firebase/quickstart/admob
-          echo "package com.google.firebase.quickstart.admob; import android.app.Activity; import android.os.Bundle; import android.widget.TextView; public class MainActivity extends Activity { protected void onCreate(Bundle b){ super.onCreate(b); TextView t=new TextView(this); t.setText(\"Swiss Tournament Ready! Build OK!\"); setContentView(t); } }" > admob/src/main/java/com/google/firebase/quickstart/admob/MainActivity.java
-          sed -i '' 's/9.6.1/8.7/' gradle/wrapper/gradle-wrapper.properties || sed -i 's/9.6.1/8.7/' gradle/wrapper/gradle-wrapper.properties
-rm -f build.gradle.kts settings.gradle.kts
-rm -f build.gradle settings.gradle
-chmod +x gradlew
-          ./gradlew :admob:assembleDebug --stacktrace
-    artifacts:
-      - "**/*.apk"
+workflows:  android-workflow:    name: Build APK    max_build_duration: 60    instance_type: mac_mini_m2    environment:      java: 17    scripts:      - name: Build Debug APK        script: |          cat > settings.gradle <<'EOF'          pluginManagement {              repositories { google(); mavenCentral(); gradlePluginPortal() }          }          dependencyResolutionManagement {              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)              repositories { google(); mavenCentral() }          }          include ':admob'          EOF          mkdir -p admob/src/main          cat > admob/build.gradle <<'EOF'          plugins { id 'com.android.application' version '8.2.2' }          android {              namespace 'com.google.firebase.quickstart.admob'              compileSdk 34              defaultConfig {                  applicationId "com.google.firebase.quickstart.admob"                  minSdk 24                  targetSdk 34                  versionCode 1                  versionName "1.0"              }              compileOptions {                  sourceCompatibility JavaVersion.VERSION_17                  targetCompatibility JavaVersion.VERSION_17              }          }          EOF          cat > admob/src/main/AndroidManifest.xml <<'EOF'          <?xml version="1.0" encoding="utf-8"?>          <manifest xmlns:android="http:```xml
+<application android:label="Torneo Suizo">
+    <activity android:name=".MainActivity" android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action_Main"/>
+            <category android:name="android.intent.category.LAUNCHER"/>
+        </intent-filter>
+    </activity>
+</application>
+```
+
+```bash
+Manifest.xml: Fin del archivo.
+mkdir -p admob/src/main/java/com/google.firebase/quickstart/admob
+echo "package com.google.firebase.quickstart.admob; import android.app.Activity; import android.os.Bundle; import android.widgetTextView; public class MainActivity extends Activity { protected void onCreate(Bundle b){ super.onCreate(b); TextView t=new TextView(this); t.setText("¡Torneo Suizo listo! Construcción completada con éxito!"); }}
+```
+```bash
+echo "package com.google.firebase.quickstart.admob; import android.app.Activity; import android.os.Bundle; import android.widgetTextView; public class MainActivity extends Activity { protected void onCreate(Bundle b){ super.onCreate(b); TextView t=new TextView(this); t.setText("¡Torneo Suizo listo! Construcción completada con éxito!"); }"
+``````bash
+"; setContentView(t); } }" > admob/src/main/java/com/google.firebase/quickstart/admob/MainActivity.java  
+sed -i '' 's/9.6.1/8.7/' gradle/wrapper/gradle-wrapper.properties || sed -i 's/9.6.1/8.7/' gradle/wrapper/gradle-wrapper.properties  
+rm -f build.gradle.kts settings.gradle.kts  
+rm -f build.gradle settings.gradle  
+chmod +x gradlew  
+./gradlew :admob:assembleDebug --stacktrace  
+artifacts:  
+- "**/*.apk"   
+```
