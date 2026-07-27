@@ -97,7 +97,6 @@ workflows:
           rootProject.name = "quickstart"
           include(":admob")
           EOF
-          chmod +x gradlew
-         ./gradlew :admob:assembleDebug
+          chmod +x gradlew &&./gradlew :admob:assembleDebug
     artifacts:
       - "**/*.apk"
