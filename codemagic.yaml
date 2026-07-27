@@ -1,15 +1,15 @@
 workflows:
   android-workflow:
-    name: fix crash
+    name: fix miui freeze
     max_build_duration: 60
     instance_type: mac_mini_m2
     environment:
       java: 17
     scripts:
-      - name: Build Fix Crash
+      - name: Build MIUI Fix
         script: |
           rm -f admob/build.gradle.kts admob/build.gradle
-          mkdir -p admob/src/main/java/com/google/firebase/quickstart/admob admob/src/main/res/values
+          mkdir -p admob/src/main/java/com/google/firebase/quickstart/admob admob/src/main/res/values admob/src/main/res/mipmap-hdpi
           cat > admob/build.gradle <<'EOF'
           plugins { id 'com.android.application' version '8.2.2' }
           android {
@@ -19,8 +19,8 @@ workflows:
                   applicationId "com.swiss.tournament.cn"
                   minSdk 24
                   targetSdk 34
-                  versionCode 11
-                  versionName "11.0-fix-crash"
+                  versionCode 12
+                  versionName "12.0-fix-miui"
               }
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
@@ -35,6 +35,9 @@ workflows:
           <resources>
               <style name="Theme.Swiss" parent="Theme.AppCompat.Light.NoActionBar">
                   <item name="android:windowBackground">@android:color/white</item>
+                  <item name="android:windowIsTranslucent">false</item>
+                  <item name="android:windowAnimationStyle">@null</item>
+                  <item name="android:windowDisablePreview">true</item>
               </style>
           </resources>
           EOF
@@ -44,11 +47,15 @@ workflows:
               <application
                   android:label="瑞士轮计分器"
                   android:theme="@style/Theme.Swiss"
-                  android:hardwareAccelerated="true">
+                  android:hardwareAccelerated="false"
+                  android:icon="@android:mipmap/sym_def_app_icon"
+                  android:roundIcon="@android:mipmap/sym_def_app_icon">
                   <activity
                       android:name=".MainActivity"
                       android:exported="true"
-                      android:launchMode="singleTop"
+                      android:launchMode="singleTask"
+                      android:hardwareAccelerated="false"
+                      android:excludeFromRecents="false"
                       android:screenOrientation="portrait"
                       android:windowSoftInputMode="adjustPan">
                       <intent-filter>
@@ -68,32 +75,15 @@ workflows:
               ArrayList<Player> players=new ArrayList<>(); ArrayList<ArrayList<Match>> allRounds=new ArrayList<>(); int totalRounds=4, currentRound=0; boolean inKnockout=false; Match semi1, semi2, finalMatch, thirdMatch; ArrayList<ArrayList<Match>> koRounds=new ArrayList<>(); int koCurrent=0;
               LinearLayout root, playerListLayout, roundLayout, standingLayout, knockoutLayout; EditText inputName, inputRounds; TextView statusText; SharedPreferences prefs;
               final int WIN_PTS=3, DRAW_PTS=1, BYE_PTS=3;
-              @Override protected void onCreate(Bundle b){
-                  super.onCreate(b); prefs=getSharedPreferences("swiss_prefs_cn", MODE_PRIVATE);
-                  root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(30,30,30,30);
-                  ScrollView scroll=new ScrollView(this); scroll.addView(root); setContentView(scroll);
-                  TextView title=new TextView(this); title.setText("瑞士轮计分器 V11"); title.setTextSize(22); title.setGravity(Gravity.CENTER); root.addView(title);
-                  LinearLayout addRow=new LinearLayout(this); addRow.setOrientation(LinearLayout.HORIZONTAL);
-                  inputName=new EditText(this); inputName.setHint("输入选手姓名"); inputName.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1));
-                  Button btnAdd=new Button(this); btnAdd.setText("添加"); addRow.addView(inputName); addRow.addView(btnAdd); root.addView(addRow);
-                  LinearLayout manageRow=new LinearLayout(this); manageRow.setOrientation(LinearLayout.HORIZONTAL);
-                  Button btnSave=new Button(this); btnSave.setText("保存"); Button btnClear=new Button(this); btnClear.setText("清空"); manageRow.addView(btnSave); manageRow.addView(btnClear); root.addView(manageRow);
-                  playerListLayout=new LinearLayout(this); playerListLayout.setOrientation(LinearLayout.VERTICAL); root.addView(playerListLayout);
-                  LinearLayout roundSetRow=new LinearLayout(this); roundSetRow.setOrientation(LinearLayout.HORIZONTAL); roundSetRow.setPadding(0,20,0,0);
-                  inputRounds=new EditText(this); inputRounds.setHint("轮数 默认4"); inputRounds.setInputType(android.text.InputType.TYPE_CLASS_NUMBER); inputRounds.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1));
-                  Button btnStart=new Button(this); btnStart.setText("开始瑞士轮"); roundSetRow.addView(inputRounds); roundSetRow.addView(btnStart); root.addView(roundSetRow);
-                  Button btnKnockoutFull=new Button(this); btnKnockoutFull.setText("★ 全员单败淘汰赛"); btnKnockoutFull.setBackgroundColor(Color.parseColor("#FFC107")); root.addView(btnKnockoutFull);
-                  statusText=new TextView(this); statusText.setPadding(0,20,0,10); root.addView(statusText);
-                  roundLayout=new LinearLayout(this); roundLayout.setOrientation(LinearLayout.VERTICAL); root.addView(roundLayout);
-                  standingLayout=new LinearLayout(this); standingLayout.setOrientation(LinearLayout.VERTICAL); root.addView(standingLayout);
-                  knockoutLayout=new LinearLayout(this); knockoutLayout.setOrientation(LinearLayout.VERTICAL); root.addView(knockoutLayout);
-                  btnAdd.setOnClickListener(v->{ String name=inputName.getText().toString().trim(); if(name.isEmpty()) return; Player p=new Player(); p.name=name; players.add(p); inputName.setText(""); savePlayers(); refreshPlayerList(); });
-                  btnSave.setOnClickListener(v->{ savePlayers(); Toast.makeText(this,"已保存"+players.size()+"人",0).show(); });
-                  btnClear.setOnClickListener(v->{ players.clear(); savePlayers(); refreshPlayerList(); standingLayout.removeAllViews(); roundLayout.removeAllViews(); knockoutLayout.removeAllViews(); statusText.setText("已清空"); });
-                  btnStart.setOnClickListener(v-> startTournament());
-                  btnKnockoutFull.setOnClickListener(v-> startFullKnockout());
-                  loadPlayers(); refreshPlayerList();
-              }
+              @Override protected void onCreate(Bundle b){ super.onCreate(b); prefs=getSharedPreferences("swiss_prefs_cn", MODE_PRIVATE); root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(30,30,30,30); root.setBackgroundColor(Color.WHITE); ScrollView scroll=new ScrollView(this); scroll.addView(root); setContentView(scroll);
+              TextView title=new TextView(this); title.setText("瑞士轮 V12 MIUI修复"); title.setTextSize(22); title.setGravity(Gravity.CENTER); root.addView(title);
+              LinearLayout addRow=new LinearLayout(this); addRow.setOrientation(LinearLayout.HORIZONTAL); inputName=new EditText(this); inputName.setHint("选手姓名"); inputName.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1)); Button btnAdd=new Button(this); btnAdd.setText("添加"); addRow.addView(inputName); addRow.addView(btnAdd); root.addView(addRow);
+              LinearLayout manageRow=new LinearLayout(this); manageRow.setOrientation(LinearLayout.HORIZONTAL); Button btnSave=new Button(this); btnSave.setText("保存"); Button btnClear=new Button(this); btnClear.setText("清空"); manageRow.addView(btnSave); manageRow.addView(btnClear); root.addView(manageRow);
+              playerListLayout=new LinearLayout(this); playerListLayout.setOrientation(LinearLayout.VERTICAL); root.addView(playerListLayout);
+              LinearLayout roundSetRow=new LinearLayout(this); roundSetRow.setOrientation(LinearLayout.HORIZONTAL); inputRounds=new EditText(this); inputRounds.setHint("轮数 默认4"); inputRounds.setInputType(android.text.InputType.TYPE_CLASS_NUMBER); inputRounds.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1)); Button btnStart=new Button(this); btnStart.setText("开始"); roundSetRow.addView(inputRounds); roundSetRow.addView(btnStart); root.addView(roundSetRow);
+              Button btnKnockoutFull=new Button(this); btnKnockoutFull.setText("★ 全员淘汰赛"); btnKnockoutFull.setBackgroundColor(Color.parseColor("#FFC107")); root.addView(btnKnockoutFull);
+              statusText=new TextView(this); statusText.setPadding(0,20,0,10); root.addView(statusText); roundLayout=new LinearLayout(this); roundLayout.setOrientation(LinearLayout.VERTICAL); root.addView(roundLayout); standingLayout=new LinearLayout(this); standingLayout.setOrientation(LinearLayout.VERTICAL); root.addView(standingLayout); knockoutLayout=new LinearLayout(this); knockoutLayout.setOrientation(LinearLayout.VERTICAL); root.addView(knockoutLayout);
+              btnAdd.setOnClickListener(v->{ String name=inputName.getText().toString().trim(); if(name.isEmpty()) return; Player p=new Player(); p.name=name; players.add(p); inputName.setText(""); savePlayers(); refreshPlayerList(); }); btnSave.setOnClickListener(v->{ savePlayers(); Toast.makeText(this,"已保存"+players.size()+"人",0).show(); }); btnClear.setOnClickListener(v->{ players.clear(); savePlayers(); refreshPlayerList(); standingLayout.removeAllViews(); roundLayout.removeAllViews(); knockoutLayout.removeAllViews(); statusText.setText("已清空"); }); btnStart.setOnClickListener(v-> startTournament()); btnKnockoutFull.setOnClickListener(v-> startFullKnockout()); loadPlayers(); refreshPlayerList(); }
               @Override protected void onPause(){ super.onPause(); savePlayers(); }
               void savePlayers(){ StringBuilder sb=new StringBuilder(); for(int i=0;i<players.size();i++){ if(i>0) sb.append(";;"); sb.append(players.get(i).name.replace(";;"," ")); } prefs.edit().putString("player_names", sb.toString()).apply(); }
               void loadPlayers(){ String saved=prefs.getString("player_names",""); if(saved.isEmpty()) return; String[] arr=saved.split(";;"); for(String n:arr){ if(n.trim().isEmpty()) continue; Player p=new Player(); p.name=n.trim(); players.add(p); } }
@@ -101,7 +91,7 @@ workflows:
               void startTournament(){ if(players.size()<2){ Toast.makeText(this,"至少2人",0).show(); return; } try{ if(!inputRounds.getText().toString().isEmpty()) totalRounds=Integer.parseInt(inputRounds.getText().toString()); }catch(Exception e){} if(totalRounds<1) totalRounds=1; allRounds.clear(); currentRound=0; inKnockout=false; knockoutLayout.removeAllViews(); koRounds.clear(); for(Player p:players){ p.score=0; p.opponents.clear(); p.results.clear(); p.hasBye=false; p.wins=0; p.draws=0; p.losses=0; } nextRound(); }
               void nextRound(){ if(currentRound>=totalRounds){ calcTieBreak(); statusText.setText("瑞士轮结束!"); showStandings(); showKnockoutEntry(); return; } currentRound++; ArrayList<Match> matches=generatePairing(); allRounds.add(matches); showRound(matches); calcTieBreak(); showStandings(); }
               ArrayList<Match> generatePairing(){ ArrayList<Integer> idx=new ArrayList<>(); for(int i=0;i<players.size();i++) idx.add(i); Collections.sort(idx,(a,b)-> Double.compare(players.get(b).score, players.get(a).score)); ArrayList<Match> matches=new ArrayList<>(); boolean[] used=new boolean[players.size()]; if(idx.size()%2==1){ for(int k=idx.size()-1;k>=0;k--){ int id=idx.get(k); if(!players.get(id).hasBye &&!used[id]){ Match m=new Match(); m.p1=id; m.p2=-1; m.result=4; matches.add(m); players.get(id).score+=BYE_PTS; players.get(id).results.add(1.0); players.get(id).opponents.add(-1); players.get(id).hasBye=true; players.get(id).wins++; used[id]=true; break; } } } for(int i=0;i<idx.size();i++){ int a=idx.get(i); if(used[a]) continue; used[a]=true; int opponent=-1; for(int j=i+1;j<idx.size();j++){ int b=idx.get(j); if(used[b]) continue; if(!players.get(a).opponents.contains(b)){ opponent=b; break; } } if(opponent==-1){ for(int j=0;j<idx.size();j++){ int b=idx.get(j); if(used[b]||b==a) continue; if(!players.get(a).opponents.contains(b)){ opponent=b; break; } } } if(opponent==-1){ for(int j=0;j<idx.size();j++){ int b=idx.get(j); if(!used[b] && b!=a){ opponent=b; break; } } } if(opponent!=-1){ used[opponent]=true; Match m=new Match(); m.p1=a; m.p2=opponent; matches.add(m); } } return matches; }
-              void showRound(ArrayList<Match> matches){ if(inKnockout) return; roundLayout.removeAllViews(); TextView tv=new TextView(this); tv.setText("第 "+currentRound+" 轮 / 共 "+totalRounds+" 轮"); tv.setTextSize(20); roundLayout.addView(tv); for(int i=0;i<matches.size();i++){ Match m=matches.get(i); LinearLayout row=new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); row.setPadding(0,10,0,10); row.setBackgroundColor(i%2==0? Color.parseColor("#F0F0F0"): Color.WHITE); TextView matchText=new TextView(this); matchText.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1)); matchText.setTextSize(16); if(m.p2==-1){ matchText.setText(players.get(m.p1).name+" 轮空 +"+BYE_PTS); row.addView(matchText); } else { matchText.setText(players.get(m.p1).name+" vs "+players.get(m.p2).name); row.addView(matchText); if(m.result==0){ Button b1=new Button(this); b1.setText("胜"); Button bD=new Button(this); bD.setText("平"); Button b2=new Button(this); b2.setText("胜"); b1.setOnClickListener(v->{ setResult(m,1); showRound(matches); calcTieBreak(); showStandings(); }); b2.setOnClickListener(v->{ setResult(m,2); showRound(matches); calcTieBreak(); showStandings(); }); bD.setOnClickListener(v->{ setResult(m,3); showRound(matches); calcTieBreak(); showStandings(); }); row.addView(b1); row.addView(bD); row.addView(b2); } else { TextView res=new TextView(this); res.setText(m.result==1? players.get(m.p1).name+" 胜": m.result==2? players.get(m.p2).name+" 胜":"平局"); res.setTextColor(Color.BLUE); row.addView(res); } } roundLayout.addView(row); } boolean allDone=true; for(Match m:matches) if(m.p2!=-1 && m.result==0) allDone=false; if(allDone){ Button btnNext=new Button(this); btnNext.setText(currentRound==totalRounds?"结束":"下一轮"); btnNext.setOnClickListener(v-> nextRound()); roundLayout.addView(btnNext); } }
+              void showRound(ArrayList<Match> matches){ if(inKnockout) return; roundLayout.removeAllViews(); TextView tv=new TextView(this); tv.setText("第 "+currentRound+" 轮 / 共 "+totalRounds+" 轮"); tv.setTextSize(20); roundLayout.addView(tv); for(int i=0;i<matches.size();i++){ Match m=matches.get(i); LinearLayout row=new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); row.setPadding(0,10,0,10); row.setBackgroundColor(i%2==0? Color.parseColor("#F0F0F0"): Color.WHITE); TextView matchText=new TextView(this); matchText.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1)); matchText.setTextSize(16); if(m.p2==-1){ matchText.setText(players.get(m.p1).name+" 轮空 +"+BYE_PTS); row.addView(matchText); } else { matchText.setText(players.get(m.p1).name+" vs "+players.get(m.p2).name); row.addView(matchText); if(m.result==0){ Button b1=new Button(this); b1.setText("胜"); Button bD=new Button(this); bD.setText("平"); Button b2=new Button(this); b2.setText("胜"); b1.setOnClickListener(v->{ setResult(m,1); showRound(matches); calcTieBreak(); showStandings(); }); b2.setOnClickListener(v->{ setResult(m,2); showRound(matches); calcTieBreak(); showStandings(); }); bD.setOnClickListener(v->{ setResult(m,3); showRound(matches); calcTieBreak(); showStandings(); }); row.addView(b1); row.addView(bD); row.addView(b2); } else { TextView res=new TextView(this); res.setText(m.result==1? players.get(m.p1).name+" 胜": m.result==2? players.get(m.p2).name+" 胜":"平局"); res.setTextColor(Color.BLUE); row.addView(res); } } roundLayout.addView(row); } boolean allDone=true; for(Match mm:matches) if(mm.p2!=-1 && mm.result==0) allDone=false; if(allDone){ Button btnNext=new Button(this); btnNext.setText(currentRound==totalRounds?"结束":"下一轮"); btnNext.setOnClickListener(v-> nextRound()); roundLayout.addView(btnNext); } }
               void setResult(Match m,int result){ if(m.result!=0) return; m.result=result; if(result==1){ players.get(m.p1).score+=WIN_PTS; players.get(m.p1).wins++; players.get(m.p2).losses++; players.get(m.p1).results.add(1.0); players.get(m.p2).results.add(0.0); } else if(result==2){ players.get(m.p2).score+=WIN_PTS; players.get(m.p2).wins++; players.get(m.p1).losses++; players.get(m.p1).results.add(0.0); players.get(m.p2).results.add(1.0); } else if(result==3){ players.get(m.p1).score+=DRAW_PTS; players.get(m.p2).score+=DRAW_PTS; players.get(m.p1).draws++; players.get(m.p2).draws++; players.get(m.p1).results.add(0.5); players.get(m.p2).results.add(0.5); } if(m.p2!=-1){ players.get(m.p1).opponents.add(m.p2); players.get(m.p2).opponents.add(m.p1); } }
               void calcTieBreak(){ for(Player p:players){ double buch=0, sb=0; for(int i=0;i<p.opponents.size();i++){ int oid=p.opponents.get(i); if(oid==-1) continue; double oppScore=players.get(oid).score; buch+=oppScore; double res=p.results.size()>i?p.results.get(i):0; if(res==1) sb+=oppScore; else if(res==0.5) sb+=oppScore*0.5; } p.buchholz=buch; p.sb=sb; } }
               ArrayList<Integer> getSortedIdx(){ ArrayList<Integer> idx=new ArrayList<>(); for(int i=0;i<players.size();i++) idx.add(i); Collections.sort(idx,(a,b)->{ Player pa=players.get(a), pb=players.get(b); int cmp=Double.compare(pb.score, pa.score); if(cmp!=0) return cmp; cmp=Integer.compare(pb.wins, pa.wins); if(cmp!=0) return cmp; cmp=Double.compare(pb.buchholz, pa.buchholz); if(cmp!=0) return cmp; return Double.compare(pb.sb, pa.sb); }); return idx; }
@@ -110,7 +100,7 @@ workflows:
               void startTop4Knockout(){ inKnockout=true; roundLayout.removeAllViews(); ArrayList<Integer> idx=getSortedIdx(); int p1=idx.get(0), p2=idx.get(1), p3=idx.get(2), p4=idx.get(3); semi1=new Match(); semi1.p1=p1; semi1.p2=p4; semi1.label="半决赛1"; semi2=new Match(); semi2.p1=p2; semi2.p2=p3; semi2.label="半决赛2"; finalMatch=null; thirdMatch=null; showTop4Bracket(); }
               void showTop4Bracket(){ knockoutLayout.removeAllViews(); addMatchView(semi1, true, false); addMatchView(semi2, true, false); if(semi1.result!=0 && semi2.result!=0){ if(finalMatch==null){ int w1=semi1.result==1?semi1.p1:semi1.p2; int w2=semi2.result==1?semi2.p1:semi2.p2; int l1=semi1.result==1?semi1.p2:semi1.p1; int l2=semi2.result==1?semi2.p2:semi2.p1; finalMatch=new Match(); finalMatch.p1=w1; finalMatch.p2=w2; finalMatch.label="决赛"; thirdMatch=new Match(); thirdMatch.p1=l1; thirdMatch.p2=l2; thirdMatch.label="季军赛"; } addMatchView(thirdMatch,false,false); addMatchView(finalMatch,false,false); } }
               void startFullKnockout(){ if(players.size()<2){ Toast.makeText(this,"至少2人",0).show(); return; } inKnockout=true; roundLayout.removeAllViews(); standingLayout.removeAllViews(); knockoutLayout.removeAllViews(); koRounds.clear(); koCurrent=0; ArrayList<Integer> all=new ArrayList<>(); for(int i=0;i<players.size();i++) all.add(i); Collections.shuffle(all); ArrayList<Match> first=new ArrayList<>(); for(int i=0;i<all.size();i+=2){ Match m=new Match(); m.p1=all.get(i); if(i+1<all.size()) m.p2=all.get(i+1); else { m.p2=-1; m.result=1; } m.label="第1轮"; first.add(m); } koRounds.add(first); showFullKnockout(); }
-              void showFullKnockout(){ knockoutLayout.removeAllViews(); if(koRounds.isEmpty()) return; ArrayList<Match> cur=koRounds.get(koCurrent); for(Match m:cur){ if(m.p2==-1){ TextView tv=new TextView(this); tv.setText(players.get(m.p1).name+" 轮空"); knockoutLayout.addView(tv); } else { addMatchView(m,false,true); } } boolean allDone=true; for(Match m:cur) if(m.p2!=-1 && m.result==0) allDone=false; if(allDone){ ArrayList<Integer> winners=new ArrayList<>(); for(Match m:cur){ if(m.p2==-1) winners.add(m.p1); else winners.add(m.result==1?m.p1:m.p2); } if(winners.size()>1){ Button next=new Button(this); next.setText("下一轮"); next.setOnClickListener(v->{ ArrayList<Match> nextRound=new ArrayList<>(); for(int i=0;i<winners.size();i+=2){ Match m=new Match(); m.p1=winners.get(i); if(i+1<winners.size()) m.p2=winners.get(i+1); else { m.p2=-1; m.result=1; } nextRound.add(m); } koRounds.add(nextRound); koCurrent++; showFullKnockout(); }); knockoutLayout.addView(next); } } }
+              void showFullKnockout(){ knockoutLayout.removeAllViews(); if(koRounds.isEmpty()) return; ArrayList<Match> cur=koRounds.get(koCurrent); for(Match m:cur){ if(m.p2==-1){ TextView tv=new TextView(this); tv.setText(players.get(m.p1).name+" 轮空"); knockoutLayout.addView(tv); } else { addMatchView(m,false,true); } } boolean allDone=true; for(Match m:cur) if(m.p2!=-1 && m.result==0) allDone=false; if(allDone){ ArrayList<Integer> winners=new ArrayList<>(); for(Match m:cur){ if(m.p2==-1) winners.add(m.p1); else winners.add(m.result==1?m.p1:m.p2); } if(winners.size()>1){ Button next=new Button(this); next.setText("下一轮"); next.setOnClickListener(v->{ ArrayList<Match> nextRound=new ArrayList<>(); for(int i=0;i<winners.size();i+=2){ Match mm=new Match(); mm.p1=winners.get(i); if(i+1<winners.size()) mm.p2=winners.get(i+1); else { mm.p2=-1; mm.result=1; } nextRound.add(mm); } koRounds.add(nextRound); koCurrent++; showFullKnockout(); }); knockoutLayout.addView(next); } } }
               void addMatchView(Match m, boolean isSemi, boolean isFull){ if(m==null) return; LinearLayout row=new LinearLayout(this); row.setOrientation(LinearLayout.VERTICAL); row.setPadding(0,15,0,15); TextView label=new TextView(this); String vs=m.p2==-1? players.get(m.p1).name+" 轮空": players.get(m.p1).name+" vs "+players.get(m.p2).name; label.setText(m.label+" : "+vs); label.setTextSize(16); row.addView(label); LinearLayout btnRow=new LinearLayout(this); btnRow.setOrientation(LinearLayout.HORIZONTAL); if(m.result==0 && m.p2!=-1){ Button b1=new Button(this); b1.setText(players.get(m.p1).name+" 胜"); Button b2=new Button(this); b2.setText(players.get(m.p2).name+" 胜"); b1.setOnClickListener(v->{ m.result=1; if(isFull) showFullKnockout(); else showTop4Bracket(); }); b2.setOnClickListener(v->{ m.result=2; if(isFull) showFullKnockout(); else showTop4Bracket(); }); btnRow.addView(b1); btnRow.addView(b2); } else if(m.result!=0){ TextView res=new TextView(this); res.setText(m.result==1?players.get(m.p1).name+" 晋级":players.get(m.p2).name+" 晋级"); res.setTextColor(Color.BLUE); btnRow.addView(res); } row.addView(btnRow); knockoutLayout.addView(row); }
           }
           JAVA_EOF
