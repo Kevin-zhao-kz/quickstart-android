@@ -8,10 +8,7 @@ workflows:
     scripts:
       - name: Build Debug APK
         script: |
-          cd admob
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew :admob:assembleDebug --stacktrace
     artifacts:
-      - admob/app/build/outputs/apk/debug/*.apk
-      - admob/build/outputs/apk/debug/*.apk
       - "**/*.apk"
