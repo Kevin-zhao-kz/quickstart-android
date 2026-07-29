@@ -1,6 +1,6 @@
 workflows:
   android-workflow:
-    name: build 9.1.4 champion
+    name: build 9.1.4 fix2
     max_build_duration: 60
     instance_type: mac_mini_m2
     environment:
@@ -97,7 +97,6 @@ workflows:
                   settlementLayout.removeAllViews();
                   if(sortedIdx==null || sortedIdx.isEmpty()) return;
                   LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(40,40,40,40); box.setBackgroundColor(Color.parseColor("#FFF8E1"));
-                  // 冠军大字
                   if(sortedIdx.size()>=1){
                       int champId=sortedIdx.get(0); if(champId>=0 && champId<players.size()){
                           TextView champView=new TextView(this); champView.setText("🏆 冠军: "+players.get(champId).name); champView.setTextSize(26); champView.setGravity(Gravity.CENTER); champView.setTextColor(Color.parseColor("#E65100")); champView.setPadding(0,20,0,10); box.addView(champView);
@@ -106,7 +105,7 @@ workflows:
                   }
                   if(sortedIdx.size()>=2){ int id=sortedIdx.get(1); if(id>=0 && id<players.size()){ TextView tv=new TextView(this); tv.setText("🥈 亚军: "+players.get(id).name+" ("+(int)players.get(id).score+"分)"); tv.setTextSize(16); tv.setGravity(Gravity.CENTER); tv.setPadding(0,15,0,5); box.addView(tv); } }
                   if(sortedIdx.size()>=3){ int id=sortedIdx.get(2); if(id>=0 && id<players.size()){ TextView tv=new TextView(this); tv.setText("🥉 季军: "+players.get(id).name+" ("+(int)players.get(id).score+"分)"); tv.setTextSize(16); tv.setGravity(Gravity.CENTER); tv.setPadding(0,5,0,15); box.addView(tv); } }
-                  View line=new View(this); line.setLayoutParams(new LinearLayout.LayoutParams(-1,2)); line.setBackgroundColor(Color.parseColor("#FFE0B2")); box.addView(line);
+                  android.view.View line=new android.view.View(this); line.setLayoutParams(new LinearLayout.LayoutParams(-1,2)); line.setBackgroundColor(Color.parseColor("#FFE0B2")); box.addView(line);
                   StringBuilder report=new StringBuilder(); report.append("冠军: ").append(sortedIdx.size()>=1? players.get(sortedIdx.get(0)).name:"").append("\n");
                   for(int r=0;r<sortedIdx.size();r++){ int id=sortedIdx.get(r); if(id<0||id>=players.size()) continue; Player p=players.get(id); String l=(r+1)+". "+p.name+" "+(int)p.score+"分"; if(r>=3){ TextView tv=new TextView(this); tv.setText(l); tv.setPadding(10,6,10,6); tv.setTextSize(13); box.addView(tv); } report.append(l).append("\n"); }
                   Button btnCopy=new Button(this); btnCopy.setText("复制战报发群"); btnCopy.setOnClickListener(v->{ android.content.ClipboardManager cm=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE); cm.setPrimaryClip(android.content.ClipData.newPlainText("report", report.toString())); Toast.makeText(this,"已复制",0).show(); }); box.addView(btnCopy);
