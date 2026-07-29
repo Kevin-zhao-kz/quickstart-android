@@ -1,12 +1,12 @@
 workflows:
   android-workflow:
-    name: build 9.0.2 champion rounds
+    name: build 9.0.2 rename
     max_build_duration: 60
     instance_type: mac_mini_m2
     environment:
       java: 17
     scripts:
-      - name: Build V9.0.2
+      - name: Build 9.0.2
         script: |
           rm -rf ~/.gradle/wrapper/dists/gradle-9.6.1-bin
           cat > gradle/wrapper/gradle-wrapper.properties <<'EOF'
@@ -27,7 +27,7 @@ workflows:
                   applicationId "com.swiss.tournament.cn"
                   minSdk 24
                   targetSdk 34
-                  versionCode 917
+                  versionCode 902
                   versionName "9.0.2"
               }
               compileOptions {
@@ -100,14 +100,12 @@ workflows:
                   if(sortedIdx==null || sortedIdx.isEmpty()) return;
                   LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(40,40,40,40); box.setBackgroundColor(Color.WHITE);
                   android.widget.LinearLayout.LayoutParams lp=new android.widget.LinearLayout.LayoutParams(-1,-2); lp.setMargins(0,20,0,20); box.setLayoutParams(lp);
-                  // ===== 冠军详情 =====
                   if(sortedIdx.size()>=1){
                       int champId=sortedIdx.get(0); if(champId>=0 && champId<players.size()){
                           Player p=players.get(champId);
                           TextView champView=new TextView(this); champView.setText("🏆 冠军: "+p.name); champView.setTextSize(28); champView.setGravity(Gravity.CENTER); champView.setTextColor(Color.parseColor("#E65100")); champView.setPadding(0,20,0,10); box.addView(champView);
                           TextView d1=new TextView(this); d1.setText("积分: "+(int)p.score+"分 | 战绩: "+p.wins+"胜 "+p.draws+"平 "+p.losses+"负"); d1.setGravity(Gravity.CENTER); d1.setTextSize(14); d1.setTextColor(Color.parseColor("#333333")); box.addView(d1);
                           TextView d2=new TextView(this); d2.setText("OMW%: "+String.format("%.1f",p.omw*100)+"% OGW%: "+String.format("%.1f",p.ogw*100)+"% Buchholz: "+(int)p.buchholz); d2.setGravity(Gravity.CENTER); d2.setTextSize(13); d2.setTextColor(Color.parseColor("#666666")); d2.setPadding(0,8,0,15); box.addView(d2);
-                          // 新增：每一轮数据
                           android.view.View sep=new android.view.View(this); sep.setLayoutParams(new LinearLayout.LayoutParams(-1,1)); sep.setBackgroundColor(Color.parseColor("#EEEEEE")); box.addView(sep);
                           TextView roundTitle=new TextView(this); roundTitle.setText("冠军征程:"); roundTitle.setTextSize(13); roundTitle.setTextColor(Color.parseColor("#E65100")); roundTitle.setPadding(0,12,0,6); box.addView(roundTitle);
                           for(int i=0;i<p.opponents.size();i++){
@@ -123,7 +121,6 @@ workflows:
                               }
                               TextView rd=new TextView(this); rd.setText(line); rd.setTextSize(13); rd.setTextColor(Color.parseColor("#444444")); rd.setPadding(5,5,5,5); rd.setBackgroundColor(i%2==0? Color.parseColor("#FFF8E1") : Color.parseColor("#FFFFFF")); box.addView(rd);
                           }
-                          // 如果是淘汰赛模式，opponents为空就不显示上面，给个提示
                           if(p.opponents.isEmpty() && p.wins>0){
                               TextView rd=new TextView(this); rd.setText(" 淘汰赛夺冠: "+p.wins+"胜"); rd.setTextSize(13); box.addView(rd);
                           }
