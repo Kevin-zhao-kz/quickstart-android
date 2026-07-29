@@ -1,37 +1,15 @@
 workflows:
   android-workflow:
-    name: build 9.0.4 final
+    name: build 9.0.4 fix
     max_build_duration: 60
     instance_type: mac_mini_m2
     environment:
       java: 17
     scripts:
-      - name: Build V9.0.4
+      - name: Build V9.0.4 Fix
         script: |
           rm -f admob/build.gradle.kts admob/build.gradle
-          mkdir -p admob/src/main/java/com/google/firebase/quickstart/admob admob/src/main/res/values admob/src/main/res/mipmap-xxhdpi
-          # 生成图标 - 卡牌风格
-          python3 -c "
-          from PIL import Image, ImageDraw
-          import os
-          size=512
-          img=Image.new('RGBA',(size,size),(0,0,0,0))
-          draw=ImageDraw.Draw(img)
-          # 圆角绿底
-          draw.rounded_rectangle([0,0,size,size], radius=120, fill='#16A34A')
-          draw.rounded_rectangle([30,30,size-30,size-30], radius=90, fill='white', outline='#FACC15', width=12)
-          # 瑞士盾
-          draw.rounded_rectangle([size*0.35, size*0.18, size*0.65, size*0.42], radius=30, fill='#DC2626')
-          draw.rectangle([size*0.43, size*0.23, size*0.57, size*0.37], fill='white')
-          draw.rectangle([size*0.40, size*0.27, size*0.60, size*0.33], fill='white')
-          # 奖杯简化
-          draw.ellipse([size*0.35, size*0.52, size*0.65, size*0.75], fill='#FACC15')
-          draw.rectangle([size*0.42, size*0.74, size*0.58, size*0.82], fill='#FACC15')
-          draw.rectangle([size*0.32, size*0.82, size*0.68, size*0.88], fill='#FACC15')
-          img.save('admob/src/main/res/mipmap-xxhdpi/ic_launcher.png')
-          img.save('admob/src/main/res/mipmap-xxhdpi/ic_launcher_round.png')
-          print('icon generated')
-          "
+          mkdir -p admob/src/main/java/com/google/firebase/quickstart/admob admob/src/main/res/values
           cat > admob/build.gradle <<'EOF'
           plugins { id 'com.android.application' version '8.2.2' }
           android {
@@ -66,8 +44,8 @@ workflows:
               <application
                   android:label="瑞士轮计分器"
                   android:theme="@style/Theme.Swiss"
-                  android:icon="@mipmap/ic_launcher"
-                  android:roundIcon="@mipmap/ic_launcher_round">
+                  android:icon="@android:mipmap/sym_def_app_icon"
+                  android:roundIcon="@android:mipmap/sym_def_app_icon">
                   <activity
                       android:name=".MainActivity"
                       android:exported="true"
@@ -113,8 +91,7 @@ workflows:
                           android.graphics.Paint tp=new android.graphics.Paint(); tp.setColor(Color.BLACK); tp.setTextSize(26); tp.setTextAlign(android.graphics.Paint.Align.CENTER); canvas.drawText("第"+ranks.get(i), x, y-22, tp); }
                   }
               }
-              ArrayList<Player> players=new ArrayList<>(); int totalRounds=4, currentRound=0; boolean inKnockout=false; Match semi1, semi2, finalMatch, thirdMatch; ArrayList<ArrayList<Match>> koRounds=new ArrayList<>(); int koCurrent=0;
-              ArrayList<ArrayList<Match>> allRounds=new ArrayList<>();
+              ArrayList<Player> players=new ArrayList<>(); int totalRounds=4, currentRound=0; boolean inKnockout=false; Match semi1, semi2, finalMatch, thirdMatch; ArrayList<ArrayList<Match>> koRounds=new ArrayList<>(); int koCurrent=0; ArrayList<ArrayList<Match>> allRounds=new ArrayList<>();
               LinearLayout root, playerListLayout, roundLayout, standingLayout, knockoutLayout; EditText inputName, inputRounds; TextView statusText; SharedPreferences prefs, careerPrefs;
               HashMap<String, Career> careerMap=new HashMap<>(); final int WIN_PTS=3, DRAW_PTS=1, BYE_PTS=3;
               @Override protected void onCreate(Bundle b){ super.onCreate(b); prefs=getSharedPreferences("swiss_prefs_cn", MODE_PRIVATE); careerPrefs=getSharedPreferences("career_stats_cn", MODE_PRIVATE); loadCareer();
@@ -142,7 +119,6 @@ workflows:
               Career getOrCreateCareer(String name){ Career c=careerMap.get(name); if(c==null){ c=new Career(); c.name=name; careerMap.put(name,c);} return c; }
               void updateCareerAfterTournament(ArrayList<Integer> sortedIdx){ for(int rank=0; rank<sortedIdx.size(); rank++){ int pid=sortedIdx.get(rank); String name=players.get(pid).name; Career c=getOrCreateCareer(name); c.tourCount++; c.totalRank+=(rank+1); c.avgRank=(double)c.totalRank/c.tourCount; if((rank+1)<c.bestRank) c.bestRank=rank+1; c.rankHistory.add(rank+1); Player p=players.get(pid); for(int i=0;i<p.opponents.size();i++){ int oid=p.opponents.get(i); if(oid==-1) continue; String oppName=players.get(oid).name; double res=p.results.get(i); int[] rec=c.h2h.getOrDefault(oppName,new int[]{0,0,0}); if(res==1) rec[0]++; else if(res==0) rec[1]++; else rec[2]++; c.h2h.put(oppName,rec); } } saveCareer(); }
               void showSettlement(ArrayList<Integer> sortedIdx){
-                  updateCareerAfterTournament(sortedIdx);
                   ScrollView sv=new ScrollView(this); LinearLayout lay=new LinearLayout(this); lay.setOrientation(LinearLayout.VERTICAL); lay.setPadding(40,40,40,40); sv.addView(lay);
                   TextView title=new TextView(this); title.setText("🏆 比赛结束 - 最终结算 🏆"); title.setTextSize(22); title.setGravity(Gravity.CENTER); title.setTextColor(Color.parseColor("#E65100")); lay.addView(title);
                   if(sortedIdx.size()>=1){ TextView champ=new TextView(this); champ.setText("\n冠军: "+players.get(sortedIdx.get(0)).name); champ.setTextSize(20); champ.setGravity(Gravity.CENTER); champ.setTextColor(Color.parseColor("#FF9800")); lay.addView(champ); }
@@ -159,7 +135,16 @@ workflows:
               void loadPlayers(){ String saved=prefs.getString("player_names",""); if(saved.isEmpty()) return; String[] arr=saved.split(";;"); for(String n:arr){ if(n.trim().isEmpty()) continue; Player p=new Player(); p.name=n.trim(); players.add(p); } }
               void refreshPlayerList(){ playerListLayout.removeAllViews(); if(players.isEmpty()){ TextView tv=new TextView(this); tv.setText("暂无选手"); playerListLayout.addView(tv); return; } for(int i=0;i<players.size();i++){ final int idx=i; final String pName=players.get(i).name; LinearLayout row=new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); TextView tv=new TextView(this); tv.setText((i+1)+". "+pName); tv.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1)); tv.setTextColor(Color.parseColor("#1565C0")); tv.setOnClickListener(v-> showCareerDialog(pName)); Button del=new Button(this); del.setText("X"); del.setOnClickListener(v->{ new AlertDialog.Builder(this).setTitle("二次确认").setMessage("删除 "+pName+"?").setPositiveButton("删除",(d,w)->{ players.remove(idx); savePlayers(); refreshPlayerList(); }).setNegativeButton("取消",null).show(); }); row.addView(tv); row.addView(del); playerListLayout.addView(row); } }
               void startTournament(){ if(players.size()<2){ Toast.makeText(this,"至少2人",0).show(); return; } try{ if(!inputRounds.getText().toString().isEmpty()) totalRounds=Integer.parseInt(inputRounds.getText().toString()); }catch(Exception e){} allRounds.clear(); currentRound=0; inKnockout=false; knockoutLayout.removeAllViews(); for(Player p:players){ p.score=0; p.opponents.clear(); p.results.clear(); p.hasBye=false; p.wins=0; p.draws=0; p.losses=0; } nextRound(); }
-              void nextRound(){ if(currentRound>=totalRounds){ calcTieBreak(); statusText.setText("✓ 瑞士轮结束 共"+totalRounds+"轮"); showStandings(); showSettlement(getSortedIdx()); showKnockoutEntry(); return; } currentRound++; ArrayList<Match> matches=generatePairing(); allRounds.add(matches); showRound(matches); calcTieBreak(); showStandings(); }
+              void nextRound(){
+                  if(currentRound>=totalRounds){
+                      calcTieBreak(); statusText.setText("✓ 瑞士轮结束 共"+totalRounds+"轮"); showStandings();
+                      ArrayList<Integer> sorted=getSortedIdx();
+                      updateCareerAfterTournament(sorted);
+                      showSettlement(sorted);
+                      showKnockoutEntry(); return;
+                  }
+                  currentRound++; ArrayList<Match> matches=generatePairing(); allRounds.add(matches); showRound(matches); calcTieBreak(); showStandings();
+              }
               ArrayList<Match> generatePairing(){ ArrayList<Integer> idx=new ArrayList<>(); for(int i=0;i<players.size();i++) idx.add(i); Collections.sort(idx,(a,b)-> Double.compare(players.get(b).score, players.get(a).score)); ArrayList<Match> matches=new ArrayList<>(); boolean[] used=new boolean[players.size()]; if(idx.size()%2==1){ for(int k=idx.size()-1;k>=0;k--){ int id=idx.get(k); if(!players.get(id).hasBye &&!used[id]){ Match m=new Match(); m.p1=id; m.p2=-1; m.result=4; matches.add(m); players.get(id).score+=BYE_PTS; players.get(id).results.add(1.0); players.get(id).opponents.add(-1); players.get(id).hasBye=true; players.get(id).wins++; used[id]=true; break; } } } for(int i=0;i<idx.size();i++){ int a=idx.get(i); if(used[a]) continue; used[a]=true; int opponent=-1; for(int j=i+1;j<idx.size();j++){ int b=idx.get(j); if(used[b]) continue; if(!players.get(a).opponents.contains(b)){ opponent=b; break; } } if(opponent==-1){ for(int j=0;j<idx.size();j++){ int b=idx.get(j); if(used[b]||b==a) continue; if(!players.get(a).opponents.contains(b)){ opponent=b; break; } } } if(opponent==-1){ for(int j=0;j<idx.size();j++){ int b=idx.get(j); if(!used[b] && b!=a){ opponent=b; break; } } } if(opponent!=-1){ used[opponent]=true; Match m=new Match(); m.p1=a; m.p2=opponent; matches.add(m); } } return matches; }
               void showRound(ArrayList<Match> matches){ if(inKnockout) return; roundLayout.removeAllViews(); TextView tv=new TextView(this); tv.setText("第 "+currentRound+" 轮"); roundLayout.addView(tv); for(Match m:matches){ LinearLayout row=new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); TextView matchText=new TextView(this); matchText.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1)); if(m.p2==-1){ matchText.setText(players.get(m.p1).name+" 轮空 +3"); row.addView(matchText); } else { matchText.setText(players.get(m.p1).name+" vs "+players.get(m.p2).name); row.addView(matchText); if(m.result==0){ Button b1=new Button(this); b1.setText("胜"); Button bD=new Button(this); bD.setText("平"); Button b2=new Button(this); b2.setText("胜"); b1.setOnClickListener(v->{ setResult(m,1); showRound(matches); calcTieBreak(); showStandings(); }); b2.setOnClickListener(v->{ setResult(m,2); showRound(matches); calcTieBreak(); showStandings(); }); bD.setOnClickListener(v->{ setResult(m,3); showRound(matches); calcTieBreak(); showStandings(); }); row.addView(b1); row.addView(bD); row.addView(b2); } else { TextView res=new TextView(this); res.setText(m.result==1? players.get(m.p1).name+" 胜": m.result==2? players.get(m.p2).name+" 胜":"平局"); row.addView(res); } } roundLayout.addView(row); } boolean allDone=true; for(Match mm:matches) if(mm.p2!=-1 && mm.result==0) allDone=false; if(allDone){ Button btnNext=new Button(this); btnNext.setText(currentRound==totalRounds?"结束瑞士轮":"下一轮"); btnNext.setBackgroundColor(Color.parseColor("#4CAF50")); btnNext.setTextColor(Color.WHITE); btnNext.setOnClickListener(v-> nextRound()); roundLayout.addView(btnNext); } }
               void setResult(Match m,int result){ if(m.result!=0) return; m.result=result; if(result==1){ players.get(m.p1).score+=WIN_PTS; players.get(m.p1).wins++; players.get(m.p2).losses++; players.get(m.p1).results.add(1.0); players.get(m.p2).results.add(0.0); } else if(result==2){ players.get(m.p2).score+=WIN_PTS; players.get(m.p2).wins++; players.get(m.p1).losses++; players.get(m.p1).results.add(0.0); players.get(m.p2).results.add(1.0); } else if(result==3){ players.get(m.p1).score+=DRAW_PTS; players.get(m.p2).score+=DRAW_PTS; players.get(m.p1).draws++; players.get(m.p2).draws++; players.get(m.p1).results.add(0.5); players.get(m.p2).results.add(0.5); } if(m.p2!=-1){ players.get(m.p1).opponents.add(m.p2); players.get(m.p2).opponents.add(m.p1); } }
@@ -168,9 +153,9 @@ workflows:
               void showStandings(){ standingLayout.removeAllViews(); ArrayList<Integer> idx=getSortedIdx(); for(int rank=0;rank<idx.size();rank++){ int id=idx.get(rank); Player p=players.get(id); TextView row=new TextView(this); row.setText((rank+1)+". "+p.name+" - "+(int)p.score+"分"); row.setPadding(15,12,15,12); row.setBackgroundColor(rank<4? Color.parseColor("#FFF9C4") : Color.WHITE); standingLayout.addView(row); } }
               void showKnockoutEntry(){ if(players.size()<4) return; Button btn=new Button(this); btn.setText("前4进淘汰赛"); knockoutLayout.addView(btn); btn.setOnClickListener(v-> startTop4Knockout()); }
               void startTop4Knockout(){ inKnockout=true; roundLayout.removeAllViews(); ArrayList<Integer> idx=getSortedIdx(); semi1=new Match(); semi1.p1=idx.get(0); semi1.p2=idx.get(3); semi1.label="半决赛1"; semi2=new Match(); semi2.p1=idx.get(1); semi2.p2=idx.get(2); semi2.label="半决赛2"; finalMatch=null; showTop4Bracket(); }
-              void showTop4Bracket(){ knockoutLayout.removeAllViews(); addMatchView(semi1,true,false); addMatchView(semi2,true,false); if(semi1.result!=0 && semi2.result!=0){ if(finalMatch==null){ int w1=semi1.result==1?semi1.p1:semi1.p2; int w2=semi2.result==1?semi2.p1:semi2.p2; finalMatch=new Match(); finalMatch.p1=w1; finalMatch.p2=w2; finalMatch.label="决赛"; } addMatchView(finalMatch,false,false); if(finalMatch.result!=0){ ArrayList<Integer> finalOrder=new ArrayList<>(); finalOrder.add(finalMatch.result==1?finalMatch.p1:finalMatch.p2); finalOrder.add(finalMatch.result==1?finalMatch.p2:finalMatch.p1); for(int id: getSortedIdx()) if(!finalOrder.contains(id)) finalOrder.add(id); showSettlement(finalOrder); } } }
+              void showTop4Bracket(){ knockoutLayout.removeAllViews(); addMatchView(semi1,true,false); addMatchView(semi2,true,false); if(semi1.result!=0 && semi2.result!=0){ if(finalMatch==null){ int w1=semi1.result==1?semi1.p1:semi1.p2; int w2=semi2.result==1?semi2.p1:semi2.p2; finalMatch=new Match(); finalMatch.p1=w1; finalMatch.p2=w2; finalMatch.label="决赛"; } addMatchView(finalMatch,false,false); if(finalMatch.result!=0){ ArrayList<Integer> finalOrder=new ArrayList<>(); finalOrder.add(finalMatch.result==1?finalMatch.p1:finalMatch.p2); finalOrder.add(finalMatch.result==1?finalMatch.p2:finalMatch.p1); for(int id: getSortedIdx()) if(!finalOrder.contains(id)) finalOrder.add(id); updateCareerAfterTournament(finalOrder); showSettlement(finalOrder); } } }
               void startFullKnockout(){ if(players.size()<2) return; inKnockout=true; roundLayout.removeAllViews(); standingLayout.removeAllViews(); knockoutLayout.removeAllViews(); koRounds.clear(); koCurrent=0; ArrayList<Integer> all=new ArrayList<>(); for(int i=0;i<players.size();i++) all.add(i); Collections.shuffle(all); ArrayList<Match> first=new ArrayList<>(); for(int i=0;i<all.size();i+=2){ Match m=new Match(); m.p1=all.get(i); if(i+1<all.size()) m.p2=all.get(i+1); else { m.p2=-1; m.result=1; } first.add(m); } koRounds.add(first); showFullKnockout(); }
-              void showFullKnockout(){ knockoutLayout.removeAllViews(); ArrayList<Match> cur=koRounds.get(koCurrent); for(Match m:cur){ addMatchView(m,false,true); } boolean allDone=true; for(Match m:cur) if(m.p2!=-1 && m.result==0) allDone=false; if(allDone){ ArrayList<Integer> winners=new ArrayList<>(); for(Match m:cur){ if(m.p2==-1) winners.add(m.p1); else winners.add(m.result==1?m.p1:m.p2); } if(winners.size()==1){ ArrayList<Integer> finalOrder=new ArrayList<>(); finalOrder.add(winners.get(0)); for(int id: getSortedIdx()) if(!finalOrder.contains(id)) finalOrder.add(id); showSettlement(finalOrder); } else if(winners.size()>1){ Button next=new Button(this); next.setText("下一轮 ("+winners.size()+"人)"); next.setOnClickListener(v->{ ArrayList<Match> nextRound=new ArrayList<>(); for(int i=0;i<winners.size();i+=2){ Match mm=new Match(); mm.p1=winners.get(i); if(i+1<winners.size()) mm.p2=winners.get(i+1); else { mm.p2=-1; mm.result=1; } nextRound.add(mm); } koRounds.add(nextRound); koCurrent++; showFullKnockout(); }); knockoutLayout.addView(next); } } }
+              void showFullKnockout(){ knockoutLayout.removeAllViews(); ArrayList<Match> cur=koRounds.get(koCurrent); for(Match m:cur){ addMatchView(m,false,true); } boolean allDone=true; for(Match m:cur) if(m.p2!=-1 && m.result==0) allDone=false; if(allDone){ ArrayList<Integer> winners=new ArrayList<>(); for(Match m:cur){ if(m.p2==-1) winners.add(m.p1); else winners.add(m.result==1?m.p1:m.p2); } if(winners.size()==1){ ArrayList<Integer> finalOrder=new ArrayList<>(); finalOrder.add(winners.get(0)); for(int id: getSortedIdx()) if(!finalOrder.contains(id)) finalOrder.add(id); updateCareerAfterTournament(finalOrder); showSettlement(finalOrder); } else if(winners.size()>1){ Button next=new Button(this); next.setText("下一轮 ("+winners.size()+"人)"); next.setOnClickListener(v->{ ArrayList<Match> nextRound=new ArrayList<>(); for(int i=0;i<winners.size();i+=2){ Match mm=new Match(); mm.p1=winners.get(i); if(i+1<winners.size()) mm.p2=winners.get(i+1); else { mm.p2=-1; mm.result=1; } nextRound.add(mm); } koRounds.add(nextRound); koCurrent++; showFullKnockout(); }); knockoutLayout.addView(next); } } }
               void addMatchView(Match m, boolean isSemi, boolean isFull){ if(m==null) return; LinearLayout row=new LinearLayout(this); row.setOrientation(LinearLayout.VERTICAL); row.setPadding(0,12,0,12); TextView label=new TextView(this); String vs=m.p2==-1? players.get(m.p1).name+" 轮空": players.get(m.p1).name+" vs "+players.get(m.p2).name; label.setText(m.label+" : "+vs); row.addView(label); LinearLayout btnRow=new LinearLayout(this); btnRow.setOrientation(LinearLayout.HORIZONTAL); if(m.result==0 && m.p2!=-1){ Button b1=new Button(this); b1.setText(players.get(m.p1).name+" 胜"); Button b2=new Button(this); b2.setText(players.get(m.p2).name+" 胜"); b1.setOnClickListener(v->{ m.result=1; if(isFull) showFullKnockout(); else showTop4Bracket(); }); b2.setOnClickListener(v->{ m.result=2; if(isFull) showFullKnockout(); else showTop4Bracket(); }); btnRow.addView(b1); btnRow.addView(b2); } else if(m.result!=0){ TextView res=new TextView(this); res.setText(m.result==1?players.get(m.p1).name+" 晋级":players.get(m.p2).name+" 晋级"); res.setTextColor(Color.BLUE); btnRow.addView(res); } row.addView(btnRow); knockoutLayout.addView(row); }
           }
           JAVA_EOF
