@@ -8,6 +8,16 @@ workflows:
     scripts:
       - name: Build V9.0.4 Fix
         script: |
+          # 修复: 强制使用 Gradle 8.7, 否则 9.6.1 会编译失败
+          rm -rf ~/.gradle/wrapper/dists/gradle-9.6.1-bin
+          cat > gradle/wrapper/gradle-wrapper.properties <<'EOF'
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.7-bin.zip
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          EOF
+
           rm -f admob/build.gradle.kts admob/build.gradle
           mkdir -p admob/src/main/java/com/google/firebase/quickstart/admob admob/src/main/res/values
           cat > admob/build.gradle <<'EOF'
