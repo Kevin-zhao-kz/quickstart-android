@@ -1,15 +1,37 @@
 workflows:
   android-workflow:
-    name: build 9.0.3 charts
+    name: build 9.0.4 final
     max_build_duration: 60
     instance_type: mac_mini_m2
     environment:
       java: 17
     scripts:
-      - name: Build V9.0.3
+      - name: Build V9.0.4
         script: |
           rm -f admob/build.gradle.kts admob/build.gradle
-          mkdir -p admob/src/main/java/com/google/firebase/quickstart/admob admob/src/main/res/values
+          mkdir -p admob/src/main/java/com/google/firebase/quickstart/admob admob/src/main/res/values admob/src/main/res/mipmap-xxhdpi
+          # 生成图标 - 卡牌风格
+          python3 -c "
+          from PIL import Image, ImageDraw
+          import os
+          size=512
+          img=Image.new('RGBA',(size,size),(0,0,0,0))
+          draw=ImageDraw.Draw(img)
+          # 圆角绿底
+          draw.rounded_rectangle([0,0,size,size], radius=120, fill='#16A34A')
+          draw.rounded_rectangle([30,30,size-30,size-30], radius=90, fill='white', outline='#FACC15', width=12)
+          # 瑞士盾
+          draw.rounded_rectangle([size*0.35, size*0.18, size*0.65, size*0.42], radius=30, fill='#DC2626')
+          draw.rectangle([size*0.43, size*0.23, size*0.57, size*0.37], fill='white')
+          draw.rectangle([size*0.40, size*0.27, size*0.60, size*0.33], fill='white')
+          # 奖杯简化
+          draw.ellipse([size*0.35, size*0.52, size*0.65, size*0.75], fill='#FACC15')
+          draw.rectangle([size*0.42, size*0.74, size*0.58, size*0.82], fill='#FACC15')
+          draw.rectangle([size*0.32, size*0.82, size*0.68, size*0.88], fill='#FACC15')
+          img.save('admob/src/main/res/mipmap-xxhdpi/ic_launcher.png')
+          img.save('admob/src/main/res/mipmap-xxhdpi/ic_launcher_round.png')
+          print('icon generated')
+          "
           cat > admob/build.gradle <<'EOF'
           plugins { id 'com.android.application' version '8.2.2' }
           android {
@@ -19,8 +41,8 @@ workflows:
                   applicationId "com.swiss.tournament.cn"
                   minSdk 24
                   targetSdk 34
-                  versionCode 903
-                  versionName "9.0.3"
+                  versionCode 904
+                  versionName "9.0.4"
               }
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
@@ -35,8 +57,6 @@ workflows:
           <resources>
               <style name="Theme.Swiss" parent="Theme.AppCompat.Light.NoActionBar">
                   <item name="android:windowBackground">@android:color/white</item>
-                  <item name="android:windowIsTranslucent">false</item>
-                  <item name="android:windowDisablePreview">true</item>
               </style>
           </resources>
           EOF
@@ -46,16 +66,13 @@ workflows:
               <application
                   android:label="瑞士轮计分器"
                   android:theme="@style/Theme.Swiss"
-                  android:hardwareAccelerated="false"
-                  android:icon="@android:mipmap/sym_def_app_icon"
-                  android:roundIcon="@android:mipmap/sym_def_app_icon">
+                  android:icon="@mipmap/ic_launcher"
+                  android:roundIcon="@mipmap/ic_launcher_round">
                   <activity
                       android:name=".MainActivity"
                       android:exported="true"
                       android:launchMode="singleTask"
-                      android:hardwareAccelerated="false"
-                      android:screenOrientation="portrait"
-                      android:windowSoftInputMode="adjustPan">
+                      android:screenOrientation="portrait">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
                           <category android:name="android.intent.category.LAUNCHER"/>
@@ -66,8 +83,7 @@ workflows:
           EOF
           cat > admob/src/main/java/com/google/firebase/quickstart/admob/MainActivity.java <<'JAVA_EOF'
           package com.google.firebase.quickstart.admob;
-          import androidx.appcompat.app.AlertDialog;
-          import androidx.appcompat.app.AppCompatActivity;
+          import androidx.appcompat.app.AlertDialog; import androidx.appcompat.app.AppCompatActivity;
           import android.os.Bundle; import android.view.Gravity; import android.widget.*; import android.graphics.Color; import android.content.SharedPreferences; import java.util.*;
           public class MainActivity extends AppCompatActivity {
               static class Player { String name; double score=0; ArrayList<Integer> opponents=new ArrayList<>(); ArrayList<Double> results=new ArrayList<>(); boolean hasBye=false; int wins=0, draws=0, losses=0; double buchholz=0, sb=0, omw=0; }
@@ -77,8 +93,7 @@ workflows:
                   ArrayList<Integer> ranks;
                   public RankChartView(android.content.Context ctx, ArrayList<Integer> r){ super(ctx); ranks=r; }
                   @Override protected void onDraw(android.graphics.Canvas canvas){
-                      super.onDraw(canvas);
-                      if(ranks==null||ranks.size()==0) return;
+                      super.onDraw(canvas); if(ranks==null||ranks.size()==0) return;
                       int w=getWidth(), h=getHeight(), pad=50;
                       android.graphics.Paint gridPaint=new android.graphics.Paint(); gridPaint.setColor(Color.parseColor("#EEEEEE")); gridPaint.setStrokeWidth(2);
                       for(int i=0;i<=4;i++){ float y=pad + i*(h-2*pad)/4f; canvas.drawLine(pad,y,w-pad,y,gridPaint); }
@@ -86,98 +101,79 @@ workflows:
                           android.graphics.Paint dotPaint=new android.graphics.Paint(); dotPaint.setColor(Color.parseColor("#FF5722")); dotPaint.setStyle(android.graphics.Paint.Style.FILL);
                           canvas.drawCircle(w/2f,h/2f,14,dotPaint);
                           android.graphics.Paint tp=new android.graphics.Paint(); tp.setColor(Color.BLACK); tp.setTextSize(32); tp.setTextAlign(android.graphics.Paint.Align.CENTER);
-                          canvas.drawText("第"+ranks.get(0)+"名", w/2f, h/2f-30, tp);
-                          return;
+                          canvas.drawText("第"+ranks.get(0)+"名", w/2f, h/2f-30, tp); return;
                       }
                       int maxRank=Collections.max(ranks); int minRank=Collections.min(ranks); int range=Math.max(1,maxRank-minRank+1);
                       android.graphics.Paint linePaint=new android.graphics.Paint(); linePaint.setColor(Color.parseColor("#4CAF50")); linePaint.setStrokeWidth(7); linePaint.setStyle(android.graphics.Paint.Style.STROKE); linePaint.setAntiAlias(true);
                       android.graphics.Paint dotPaint=new android.graphics.Paint(); dotPaint.setColor(Color.parseColor("#FF5722")); dotPaint.setStyle(android.graphics.Paint.Style.FILL); dotPaint.setAntiAlias(true);
-                      float stepX=(float)(w-2*pad)/(ranks.size()-1);
-                      android.graphics.Path path=new android.graphics.Path();
-                      for(int i=0;i<ranks.size();i++){
-                          float x=pad+i*stepX;
-                          float norm=(float)(ranks.get(i)-minRank)/range;
-                          float y=h-pad - norm*(h-2*pad);
-                          if(i==0) path.moveTo(x,y); else path.lineTo(x,y);
-                      }
+                      float stepX=(float)(w-2*pad)/(ranks.size()-1); android.graphics.Path path=new android.graphics.Path();
+                      for(int i=0;i<ranks.size();i++){ float x=pad+i*stepX; float norm=(float)(ranks.get(i)-minRank)/range; float y=h-pad - norm*(h-2*pad); if(i==0) path.moveTo(x,y); else path.lineTo(x,y); }
                       canvas.drawPath(path,linePaint);
-                      for(int i=0;i<ranks.size();i++){
-                          float x=pad+i*stepX;
-                          float norm=(float)(ranks.get(i)-minRank)/range;
-                          float y=h-pad - norm*(h-2*pad);
-                          canvas.drawCircle(x,y,12,dotPaint);
-                          android.graphics.Paint tp=new android.graphics.Paint(); tp.setColor(Color.BLACK); tp.setTextSize(26); tp.setTextAlign(android.graphics.Paint.Align.CENTER);
-                          canvas.drawText("第"+ranks.get(i), x, y-22, tp);
-                      }
+                      for(int i=0;i<ranks.size();i++){ float x=pad+i*stepX; float norm=(float)(ranks.get(i)-minRank)/range; float y=h-pad - norm*(h-2*pad); canvas.drawCircle(x,y,12,dotPaint);
+                          android.graphics.Paint tp=new android.graphics.Paint(); tp.setColor(Color.BLACK); tp.setTextSize(26); tp.setTextAlign(android.graphics.Paint.Align.CENTER); canvas.drawText("第"+ranks.get(i), x, y-22, tp); }
                   }
               }
-              ArrayList<Player> players=new ArrayList<>(); ArrayList<ArrayList<Match>> allRounds=new ArrayList<>(); int totalRounds=4, currentRound=0; boolean inKnockout=false; Match semi1, semi2, finalMatch, thirdMatch; ArrayList<ArrayList<Match>> koRounds=new ArrayList<>(); int koCurrent=0;
+              ArrayList<Player> players=new ArrayList<>(); int totalRounds=4, currentRound=0; boolean inKnockout=false; Match semi1, semi2, finalMatch, thirdMatch; ArrayList<ArrayList<Match>> koRounds=new ArrayList<>(); int koCurrent=0;
+              ArrayList<ArrayList<Match>> allRounds=new ArrayList<>();
               LinearLayout root, playerListLayout, roundLayout, standingLayout, knockoutLayout; EditText inputName, inputRounds; TextView statusText; SharedPreferences prefs, careerPrefs;
-              HashMap<String, Career> careerMap=new HashMap<>();
-              final int WIN_PTS=3, DRAW_PTS=1, BYE_PTS=3;
-              @Override protected void onCreate(Bundle b){
-                  super.onCreate(b); prefs=getSharedPreferences("swiss_prefs_cn", MODE_PRIVATE); careerPrefs=getSharedPreferences("career_stats_cn", MODE_PRIVATE); loadCareer();
+              HashMap<String, Career> careerMap=new HashMap<>(); final int WIN_PTS=3, DRAW_PTS=1, BYE_PTS=3;
+              @Override protected void onCreate(Bundle b){ super.onCreate(b); prefs=getSharedPreferences("swiss_prefs_cn", MODE_PRIVATE); careerPrefs=getSharedPreferences("career_stats_cn", MODE_PRIVATE); loadCareer();
                   root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(30,30,30,30); root.setBackgroundColor(Color.WHITE);
                   ScrollView scroll=new ScrollView(this); scroll.addView(root); setContentView(scroll);
-                  TextView title=new TextView(this); title.setText("瑞士轮计分器 V9.0.3"); title.setTextSize(22); title.setGravity(Gravity.CENTER); title.setTextColor(Color.parseColor("#212121")); root.addView(title);
-                  TextView ruleCard=new TextView(this); ruleCard.setText("胜 3分 | 平 1分 | 负 0分 | 轮空 3分\n排序: 积分 > 胜场 > OMW% > Buch > SB\n★ 点击选手名查看生涯走势图");
-                  ruleCard.setTextSize(12); ruleCard.setPadding(20,20,20,20); ruleCard.setBackgroundColor(Color.parseColor("#E3F2FD")); ruleCard.setTextColor(Color.parseColor("#1565C0")); root.addView(ruleCard);
-                  LinearLayout addRow=new LinearLayout(this); addRow.setOrientation(LinearLayout.HORIZONTAL);
-                  inputName=new EditText(this); inputName.setHint("输入选手姓名"); inputName.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1));
-                  Button btnAdd=new Button(this); btnAdd.setText("添加"); addRow.addView(inputName); addRow.addView(btnAdd); root.addView(addRow);
-                  LinearLayout manageRow=new LinearLayout(this); manageRow.setOrientation(LinearLayout.HORIZONTAL);
-                  Button btnSave=new Button(this); btnSave.setText("保存名单"); Button btnClear=new Button(this); btnClear.setText("清空名单"); manageRow.addView(btnSave); manageRow.addView(btnClear); root.addView(manageRow);
+                  TextView title=new TextView(this); title.setText("瑞士轮计分器 V9.0.4"); title.setTextSize(22); title.setGravity(Gravity.CENTER); root.addView(title);
+                  TextView ruleCard=new TextView(this); ruleCard.setText("胜3 平1 负0 轮空3 | 点击选手名看生涯图表"); ruleCard.setPadding(20,20,20,20); ruleCard.setBackgroundColor(Color.parseColor("#E3F2FD")); root.addView(ruleCard);
+                  LinearLayout addRow=new LinearLayout(this); addRow.setOrientation(LinearLayout.HORIZONTAL); inputName=new EditText(this); inputName.setHint("输入选手姓名"); inputName.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1)); Button btnAdd=new Button(this); btnAdd.setText("添加"); addRow.addView(inputName); addRow.addView(btnAdd); root.addView(addRow);
+                  LinearLayout manageRow=new LinearLayout(this); manageRow.setOrientation(LinearLayout.HORIZONTAL); Button btnSave=new Button(this); btnSave.setText("保存名单"); Button btnClear=new Button(this); btnClear.setText("清空名单"); manageRow.addView(btnSave); manageRow.addView(btnClear); root.addView(manageRow);
                   playerListLayout=new LinearLayout(this); playerListLayout.setOrientation(LinearLayout.VERTICAL); root.addView(playerListLayout);
-                  LinearLayout roundSetRow=new LinearLayout(this); roundSetRow.setOrientation(LinearLayout.HORIZONTAL); roundSetRow.setPadding(0,20,0,0);
-                  inputRounds=new EditText(this); inputRounds.setHint("瑞士轮数 默认4"); inputRounds.setInputType(android.text.InputType.TYPE_CLASS_NUMBER); inputRounds.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1));
-                  Button btnStart=new Button(this); btnStart.setText("开始瑞士轮"); roundSetRow.addView(inputRounds); roundSetRow.addView(btnStart); root.addView(roundSetRow);
+                  LinearLayout roundSetRow=new LinearLayout(this); roundSetRow.setOrientation(LinearLayout.HORIZONTAL); inputRounds=new EditText(this); inputRounds.setHint("轮数 默认4"); inputRounds.setInputType(android.text.InputType.TYPE_CLASS_NUMBER); inputRounds.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1)); Button btnStart=new Button(this); btnStart.setText("开始瑞士轮"); roundSetRow.addView(inputRounds); roundSetRow.addView(btnStart); root.addView(roundSetRow);
                   Button btnKnockoutFull=new Button(this); btnKnockoutFull.setText("★ 全员单败淘汰赛"); btnKnockoutFull.setBackgroundColor(Color.parseColor("#FFC107")); root.addView(btnKnockoutFull);
-                  statusText=new TextView(this); statusText.setPadding(0,20,0,10); statusText.setTextSize(14); root.addView(statusText);
+                  statusText=new TextView(this); statusText.setPadding(0,20,0,10); root.addView(statusText);
                   roundLayout=new LinearLayout(this); roundLayout.setOrientation(LinearLayout.VERTICAL); root.addView(roundLayout);
                   standingLayout=new LinearLayout(this); standingLayout.setOrientation(LinearLayout.VERTICAL); root.addView(standingLayout);
                   knockoutLayout=new LinearLayout(this); knockoutLayout.setOrientation(LinearLayout.VERTICAL); root.addView(knockoutLayout);
                   btnAdd.setOnClickListener(v->{ String name=inputName.getText().toString().trim(); if(name.isEmpty()) return; Player p=new Player(); p.name=name; players.add(p); inputName.setText(""); savePlayers(); refreshPlayerList(); });
                   btnSave.setOnClickListener(v->{ savePlayers(); Toast.makeText(this,"已保存"+players.size()+"人",0).show(); });
-                  btnClear.setOnClickListener(v->{ new AlertDialog.Builder(this).setTitle("确认清空").setMessage("确定清空所有选手吗？").setPositiveButton("清空",(d,w)->{ players.clear(); savePlayers(); refreshPlayerList(); standingLayout.removeAllViews(); roundLayout.removeAllViews(); knockoutLayout.removeAllViews(); statusText.setText("已清空"); }).setNegativeButton("取消",null).show(); });
+                  btnClear.setOnClickListener(v->{ new AlertDialog.Builder(this).setTitle("确认清空").setMessage("确定清空？").setPositiveButton("清空",(d,w)->{ players.clear(); savePlayers(); refreshPlayerList(); standingLayout.removeAllViews(); roundLayout.removeAllViews(); knockoutLayout.removeAllViews(); statusText.setText("已清空"); }).setNegativeButton("取消",null).show(); });
                   btnStart.setOnClickListener(v-> startTournament()); btnKnockoutFull.setOnClickListener(v-> startFullKnockout());
                   loadPlayers(); refreshPlayerList();
               }
               void loadCareer(){ careerMap.clear(); for(Map.Entry<String,?> e: careerPrefs.getAll().entrySet()){ try{ String s=(String)e.getValue(); String[] parts=s.split("\\|"); Career c=new Career(); c.name=e.getKey(); c.tourCount=Integer.parseInt(parts[0]); c.bestRank=Integer.parseInt(parts[1]); c.totalRank=Integer.parseInt(parts[2]); if(parts.length>3 &&!parts[3].isEmpty()){ for(String rh: parts[3].split(",")){ if(!rh.isEmpty()) c.rankHistory.add(Integer.parseInt(rh)); } } if(parts.length>4 &&!parts[4].isEmpty()){ for(String h: parts[4].split(";")){ if(h.isEmpty()) continue; String[] kv=h.split(":"); String opp=kv[0]; String[] wld=kv[1].split("-"); c.h2h.put(opp,new int[]{Integer.parseInt(wld[0]),Integer.parseInt(wld[1]),Integer.parseInt(wld[2])}); } } c.avgRank=c.tourCount>0?(double)c.totalRank/c.tourCount:0; careerMap.put(c.name,c);} catch(Exception ex){} } }
               void saveCareer(){ SharedPreferences.Editor ed=careerPrefs.edit(); ed.clear(); for(Career c: careerMap.values()){ StringBuilder rhSb=new StringBuilder(); for(int i=0;i<c.rankHistory.size();i++){ if(i>0) rhSb.append(","); rhSb.append(c.rankHistory.get(i)); } StringBuilder h2hSb=new StringBuilder(); for(Map.Entry<String,int[]> en: c.h2h.entrySet()){ if(h2hSb.length()>0) h2hSb.append(";"); h2hSb.append(en.getKey()).append(":").append(en.getValue()[0]).append("-").append(en.getValue()[1]).append("-").append(en.getValue()[2]); } String val=c.tourCount+"|"+c.bestRank+"|"+c.totalRank+"|"+rhSb.toString()+"|"+h2hSb.toString(); ed.putString(c.name,val); } ed.apply(); }
               Career getOrCreateCareer(String name){ Career c=careerMap.get(name); if(c==null){ c=new Career(); c.name=name; careerMap.put(name,c);} return c; }
-              void updateCareerAfterTournament(ArrayList<Integer> sortedIdx){
-                  for(int rank=0; rank<sortedIdx.size(); rank++){ int pid=sortedIdx.get(rank); String name=players.get(pid).name; Career c=getOrCreateCareer(name); c.tourCount++; c.totalRank+=(rank+1); c.avgRank=(double)c.totalRank/c.tourCount; if((rank+1)<c.bestRank) c.bestRank=rank+1; c.rankHistory.add(rank+1); Player p=players.get(pid); for(int i=0;i<p.opponents.size();i++){ int oid=p.opponents.get(i); if(oid==-1) continue; String oppName=players.get(oid).name; double res=p.results.get(i); int[] rec=c.h2h.getOrDefault(oppName,new int[]{0,0,0}); if(res==1) rec[0]++; else if(res==0) rec[1]++; else rec[2]++; c.h2h.put(oppName,rec); } } saveCareer();
+              void updateCareerAfterTournament(ArrayList<Integer> sortedIdx){ for(int rank=0; rank<sortedIdx.size(); rank++){ int pid=sortedIdx.get(rank); String name=players.get(pid).name; Career c=getOrCreateCareer(name); c.tourCount++; c.totalRank+=(rank+1); c.avgRank=(double)c.totalRank/c.tourCount; if((rank+1)<c.bestRank) c.bestRank=rank+1; c.rankHistory.add(rank+1); Player p=players.get(pid); for(int i=0;i<p.opponents.size();i++){ int oid=p.opponents.get(i); if(oid==-1) continue; String oppName=players.get(oid).name; double res=p.results.get(i); int[] rec=c.h2h.getOrDefault(oppName,new int[]{0,0,0}); if(res==1) rec[0]++; else if(res==0) rec[1]++; else rec[2]++; c.h2h.put(oppName,rec); } } saveCareer(); }
+              void showSettlement(ArrayList<Integer> sortedIdx){
+                  updateCareerAfterTournament(sortedIdx);
+                  ScrollView sv=new ScrollView(this); LinearLayout lay=new LinearLayout(this); lay.setOrientation(LinearLayout.VERTICAL); lay.setPadding(40,40,40,40); sv.addView(lay);
+                  TextView title=new TextView(this); title.setText("🏆 比赛结束 - 最终结算 🏆"); title.setTextSize(22); title.setGravity(Gravity.CENTER); title.setTextColor(Color.parseColor("#E65100")); lay.addView(title);
+                  if(sortedIdx.size()>=1){ TextView champ=new TextView(this); champ.setText("\n冠军: "+players.get(sortedIdx.get(0)).name); champ.setTextSize(20); champ.setGravity(Gravity.CENTER); champ.setTextColor(Color.parseColor("#FF9800")); lay.addView(champ); }
+                  if(sortedIdx.size()>=2){ TextView second=new TextView(this); second.setText("亚军: "+players.get(sortedIdx.get(1)).name); second.setGravity(Gravity.CENTER); lay.addView(second); }
+                  if(sortedIdx.size()>=3){ TextView third=new TextView(this); third.setText("季军: "+players.get(sortedIdx.get(2)).name); third.setGravity(Gravity.CENTER); lay.addView(third); }
+                  TextView listTitle=new TextView(this); listTitle.setText("\n最终排名:"); listTitle.setTextSize(16); lay.addView(listTitle);
+                  StringBuilder report=new StringBuilder(); report.append("瑞士轮计分器 战报\n");
+                  for(int r=0;r<sortedIdx.size();r++){ int id=sortedIdx.get(r); Player p=players.get(id); String line=(r+1)+". "+p.name+" "+(int)p.score+"分 ["+p.wins+"-"+p.draws+"-"+p.losses+"]"; TextView tv=new TextView(this); tv.setText(line); tv.setPadding(10,8,10,8); if(r==0) tv.setBackgroundColor(Color.parseColor("#FFF9C4")); lay.addView(tv); report.append(line).append("\n"); }
+                  Button btnCopy=new Button(this); btnCopy.setText("复制战报发群"); btnCopy.setOnClickListener(v->{ android.content.ClipboardManager cm=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE); cm.setPrimaryClip(android.content.ClipData.newPlainText("report", report.toString())); Toast.makeText(this,"已复制",0).show(); }); lay.addView(btnCopy);
+                  new AlertDialog.Builder(this).setView(sv).setPositiveButton("确定",null).show();
               }
-              void showCareerDialog(String name){
-                  Career c=careerMap.get(name); if(c==null||c.tourCount==0){ Toast.makeText(this,name+" 暂无数据，完成一场比赛后自动记录",0).show(); return; }
-                  ScrollView sv=new ScrollView(this); LinearLayout layout=new LinearLayout(this); layout.setOrientation(LinearLayout.VERTICAL); layout.setPadding(40,40,40,40); sv.addView(layout);
-                  TextView info=new TextView(this); info.setText("选手: "+name+"\n参赛场次: "+c.tourCount+" 场\n最高名次: 第"+c.bestRank+"名\n平均名次: 第"+String.format("%.1f",c.avgRank)+"名"); info.setTextSize(16); info.setTextColor(Color.BLACK); layout.addView(info);
-                  TextView chartTitle=new TextView(this); chartTitle.setText("\n名次走势 (越低越好):"); chartTitle.setTextSize(14); chartTitle.setTextColor(Color.GRAY); layout.addView(chartTitle);
-                  RankChartView chart=new RankChartView(this,c.rankHistory); LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,450); lp.setMargins(0,20,0,20); chart.setLayoutParams(lp); chart.setBackgroundColor(Color.parseColor("#FAFAFA")); layout.addView(chart);
-                  TextView h2hTitle=new TextView(this); h2hTitle.setText("对阵胜率:"); h2hTitle.setTextSize(14); h2hTitle.setTextColor(Color.GRAY); layout.addView(h2hTitle);
-                  if(c.h2h.isEmpty()){ TextView empty=new TextView(this); empty.setText("暂无对阵"); layout.addView(empty); } else { for(Map.Entry<String,int[]> e: c.h2h.entrySet()){ int w=e.getValue()[0], l=e.getValue()[1], d=e.getValue()[2]; int tot=w+l+d; double wr=tot>0?(double)w/tot*100:0; LinearLayout row=new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); row.setPadding(0,10,0,10); TextView opp=new TextView(this); opp.setText(e.getKey()); opp.setWidth(220); opp.setTextSize(14); row.addView(opp); ProgressBar pb=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal); pb.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1)); pb.setMax(100); pb.setProgress((int)wr); row.addView(pb); TextView pct=new TextView(this); pct.setText(String.format(" %d-%d-%d %.0f%%",w,l,d,wr)); pct.setTextSize(12); row.addView(pct); layout.addView(row); } }
-                  new AlertDialog.Builder(this).setView(sv).setPositiveButton("关闭",null).setNegativeButton("清除此人数据",(d,w)->{ new AlertDialog.Builder(this).setTitle("二次确认").setMessage("确定清除 "+name+" 的所有生涯数据？不可恢复").setPositiveButton("清除",(d2,w2)->{ careerMap.remove(name); saveCareer(); Toast.makeText(this,"已清除",0).show(); }).setNegativeButton("取消",null).show(); }).show();
-              }
+              void showCareerDialog(String name){ Career c=careerMap.get(name); if(c==null||c.tourCount==0){ Toast.makeText(this,name+" 暂无数据",0).show(); return; } ScrollView sv=new ScrollView(this); LinearLayout layout=new LinearLayout(this); layout.setOrientation(LinearLayout.VERTICAL); layout.setPadding(40,40,40,40); sv.addView(layout); TextView info=new TextView(this); info.setText("选手: "+name+"\n参赛: "+c.tourCount+"场\n最高: 第"+c.bestRank+"名\n平均: 第"+String.format("%.1f",c.avgRank)+"名"); layout.addView(info); RankChartView chart=new RankChartView(this,c.rankHistory); LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,450); lp.setMargins(0,20,0,20); chart.setLayoutParams(lp); chart.setBackgroundColor(Color.parseColor("#FAFAFA")); layout.addView(chart); for(Map.Entry<String,int[]> e: c.h2h.entrySet()){ int w=e.getValue()[0], l=e.getValue()[1], d=e.getValue()[2]; int tot=w+l+d; double wr=tot>0?(double)w/tot*100:0; TextView tv=new TextView(this); tv.setText(e.getKey()+": "+w+"-"+l+"-"+d+" 胜率"+String.format("%.0f%%",wr)); layout.addView(tv); } new AlertDialog.Builder(this).setView(sv).setPositiveButton("关闭",null).setNegativeButton("清除数据",(d,w)->{ careerMap.remove(name); saveCareer(); }).show(); }
               void savePlayers(){ StringBuilder sb=new StringBuilder(); for(int i=0;i<players.size();i++){ if(i>0) sb.append(";;"); sb.append(players.get(i).name.replace(";;"," ")); } prefs.edit().putString("player_names", sb.toString()).apply(); }
               void loadPlayers(){ String saved=prefs.getString("player_names",""); if(saved.isEmpty()) return; String[] arr=saved.split(";;"); for(String n:arr){ if(n.trim().isEmpty()) continue; Player p=new Player(); p.name=n.trim(); players.add(p); } }
-              void refreshPlayerList(){ playerListLayout.removeAllViews(); if(players.isEmpty()){ TextView tv=new TextView(this); tv.setText("暂无选手"); tv.setTextColor(Color.GRAY); playerListLayout.addView(tv); return; } TextView head=new TextView(this); head.setText(players.size()+"名选手 (点名字看图表):"); head.setTextSize(13); head.setTextColor(Color.GRAY); playerListLayout.addView(head); for(int i=0;i<players.size();i++){ final int idx=i; final String pName=players.get(i).name; LinearLayout row=new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); row.setPadding(0,8,0,8); TextView tv=new TextView(this); tv.setText((i+1)+". "+pName); tv.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1)); tv.setTextSize(16); tv.setTextColor(Color.parseColor("#1565C0")); tv.setOnClickListener(v-> showCareerDialog(pName)); Button del=new Button(this); del.setText("X"); del.setBackgroundColor(Color.parseColor("#FFCDD2")); del.setOnClickListener(v->{ new AlertDialog.Builder(this).setTitle("二次确认").setMessage("确定删除选手 \""+pName+"\" 吗？\n生涯数据会保留。").setPositiveButton("删除",(d,w)->{ players.remove(idx); savePlayers(); refreshPlayerList(); }).setNegativeButton("取消",null).show(); }); row.addView(tv); row.addView(del); playerListLayout.addView(row); } }
-              void startTournament(){ if(players.size()<2){ Toast.makeText(this,"至少2人",0).show(); return; } try{ if(!inputRounds.getText().toString().isEmpty()) totalRounds=Integer.parseInt(inputRounds.getText().toString()); }catch(Exception e){} if(totalRounds<1) totalRounds=1; allRounds.clear(); currentRound=0; inKnockout=false; knockoutLayout.removeAllViews(); koRounds.clear(); for(Player p:players){ p.score=0; p.opponents.clear(); p.results.clear(); p.hasBye=false; p.wins=0; p.draws=0; p.losses=0; } nextRound(); }
-              void nextRound(){ if(currentRound>=totalRounds){ calcTieBreak(); statusText.setText("✓ 瑞士轮结束 共"+totalRounds+"轮"); showStandings(); updateCareerAfterTournament(getSortedIdx()); showKnockoutEntry(); return; } currentRound++; ArrayList<Match> matches=generatePairing(); allRounds.add(matches); showRound(matches); calcTieBreak(); showStandings(); }
+              void refreshPlayerList(){ playerListLayout.removeAllViews(); if(players.isEmpty()){ TextView tv=new TextView(this); tv.setText("暂无选手"); playerListLayout.addView(tv); return; } for(int i=0;i<players.size();i++){ final int idx=i; final String pName=players.get(i).name; LinearLayout row=new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); TextView tv=new TextView(this); tv.setText((i+1)+". "+pName); tv.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1)); tv.setTextColor(Color.parseColor("#1565C0")); tv.setOnClickListener(v-> showCareerDialog(pName)); Button del=new Button(this); del.setText("X"); del.setOnClickListener(v->{ new AlertDialog.Builder(this).setTitle("二次确认").setMessage("删除 "+pName+"?").setPositiveButton("删除",(d,w)->{ players.remove(idx); savePlayers(); refreshPlayerList(); }).setNegativeButton("取消",null).show(); }); row.addView(tv); row.addView(del); playerListLayout.addView(row); } }
+              void startTournament(){ if(players.size()<2){ Toast.makeText(this,"至少2人",0).show(); return; } try{ if(!inputRounds.getText().toString().isEmpty()) totalRounds=Integer.parseInt(inputRounds.getText().toString()); }catch(Exception e){} allRounds.clear(); currentRound=0; inKnockout=false; knockoutLayout.removeAllViews(); for(Player p:players){ p.score=0; p.opponents.clear(); p.results.clear(); p.hasBye=false; p.wins=0; p.draws=0; p.losses=0; } nextRound(); }
+              void nextRound(){ if(currentRound>=totalRounds){ calcTieBreak(); statusText.setText("✓ 瑞士轮结束 共"+totalRounds+"轮"); showStandings(); showSettlement(getSortedIdx()); showKnockoutEntry(); return; } currentRound++; ArrayList<Match> matches=generatePairing(); allRounds.add(matches); showRound(matches); calcTieBreak(); showStandings(); }
               ArrayList<Match> generatePairing(){ ArrayList<Integer> idx=new ArrayList<>(); for(int i=0;i<players.size();i++) idx.add(i); Collections.sort(idx,(a,b)-> Double.compare(players.get(b).score, players.get(a).score)); ArrayList<Match> matches=new ArrayList<>(); boolean[] used=new boolean[players.size()]; if(idx.size()%2==1){ for(int k=idx.size()-1;k>=0;k--){ int id=idx.get(k); if(!players.get(id).hasBye &&!used[id]){ Match m=new Match(); m.p1=id; m.p2=-1; m.result=4; matches.add(m); players.get(id).score+=BYE_PTS; players.get(id).results.add(1.0); players.get(id).opponents.add(-1); players.get(id).hasBye=true; players.get(id).wins++; used[id]=true; break; } } } for(int i=0;i<idx.size();i++){ int a=idx.get(i); if(used[a]) continue; used[a]=true; int opponent=-1; for(int j=i+1;j<idx.size();j++){ int b=idx.get(j); if(used[b]) continue; if(!players.get(a).opponents.contains(b)){ opponent=b; break; } } if(opponent==-1){ for(int j=0;j<idx.size();j++){ int b=idx.get(j); if(used[b]||b==a) continue; if(!players.get(a).opponents.contains(b)){ opponent=b; break; } } } if(opponent==-1){ for(int j=0;j<idx.size();j++){ int b=idx.get(j); if(!used[b] && b!=a){ opponent=b; break; } } } if(opponent!=-1){ used[opponent]=true; Match m=new Match(); m.p1=a; m.p2=opponent; matches.add(m); } } return matches; }
-              void showRound(ArrayList<Match> matches){ if(inKnockout) return; roundLayout.removeAllViews(); TextView tv=new TextView(this); tv.setText("第 "+currentRound+" 轮 / 共 "+totalRounds+" 轮"); tv.setTextSize(18); tv.setTextColor(Color.parseColor("#212121")); roundLayout.addView(tv); for(int i=0;i<matches.size();i++){ Match m=matches.get(i); LinearLayout row=new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); row.setPadding(10,12,10,12); row.setBackgroundColor(i%2==0? Color.parseColor("#FAFAFA"): Color.WHITE); TextView matchText=new TextView(this); matchText.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1)); matchText.setTextSize(15); if(m.p2==-1){ matchText.setText(players.get(m.p1).name+" 轮空 +3"); row.addView(matchText); } else { matchText.setText(players.get(m.p1).name+" vs "+players.get(m.p2).name); row.addView(matchText); if(m.result==0){ Button b1=new Button(this); b1.setText("胜"); Button bD=new Button(this); bD.setText("平"); Button b2=new Button(this); b2.setText("胜"); b1.setOnClickListener(v->{ setResult(m,1); showRound(matches); calcTieBreak(); showStandings(); }); b2.setOnClickListener(v->{ setResult(m,2); showRound(matches); calcTieBreak(); showStandings(); }); bD.setOnClickListener(v->{ setResult(m,3); showRound(matches); calcTieBreak(); showStandings(); }); row.addView(b1); row.addView(bD); row.addView(b2); } else { TextView res=new TextView(this); res.setText(m.result==1? players.get(m.p1).name+" 胜+3": m.result==2? players.get(m.p2).name+" 胜+3":"平局+1"); res.setTextColor(Color.BLUE); res.setTextSize(13); row.addView(res); } } roundLayout.addView(row); } boolean allDone=true; for(Match mm:matches) if(mm.p2!=-1 && mm.result==0) allDone=false; if(allDone){ Button btnNext=new Button(this); btnNext.setText(currentRound==totalRounds?"结束瑞士轮":"下一轮"); btnNext.setBackgroundColor(Color.parseColor("#4CAF50")); btnNext.setTextColor(Color.WHITE); btnNext.setOnClickListener(v-> nextRound()); roundLayout.addView(btnNext); } }
+              void showRound(ArrayList<Match> matches){ if(inKnockout) return; roundLayout.removeAllViews(); TextView tv=new TextView(this); tv.setText("第 "+currentRound+" 轮"); roundLayout.addView(tv); for(Match m:matches){ LinearLayout row=new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); TextView matchText=new TextView(this); matchText.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1)); if(m.p2==-1){ matchText.setText(players.get(m.p1).name+" 轮空 +3"); row.addView(matchText); } else { matchText.setText(players.get(m.p1).name+" vs "+players.get(m.p2).name); row.addView(matchText); if(m.result==0){ Button b1=new Button(this); b1.setText("胜"); Button bD=new Button(this); bD.setText("平"); Button b2=new Button(this); b2.setText("胜"); b1.setOnClickListener(v->{ setResult(m,1); showRound(matches); calcTieBreak(); showStandings(); }); b2.setOnClickListener(v->{ setResult(m,2); showRound(matches); calcTieBreak(); showStandings(); }); bD.setOnClickListener(v->{ setResult(m,3); showRound(matches); calcTieBreak(); showStandings(); }); row.addView(b1); row.addView(bD); row.addView(b2); } else { TextView res=new TextView(this); res.setText(m.result==1? players.get(m.p1).name+" 胜": m.result==2? players.get(m.p2).name+" 胜":"平局"); row.addView(res); } } roundLayout.addView(row); } boolean allDone=true; for(Match mm:matches) if(mm.p2!=-1 && mm.result==0) allDone=false; if(allDone){ Button btnNext=new Button(this); btnNext.setText(currentRound==totalRounds?"结束瑞士轮":"下一轮"); btnNext.setBackgroundColor(Color.parseColor("#4CAF50")); btnNext.setTextColor(Color.WHITE); btnNext.setOnClickListener(v-> nextRound()); roundLayout.addView(btnNext); } }
               void setResult(Match m,int result){ if(m.result!=0) return; m.result=result; if(result==1){ players.get(m.p1).score+=WIN_PTS; players.get(m.p1).wins++; players.get(m.p2).losses++; players.get(m.p1).results.add(1.0); players.get(m.p2).results.add(0.0); } else if(result==2){ players.get(m.p2).score+=WIN_PTS; players.get(m.p2).wins++; players.get(m.p1).losses++; players.get(m.p1).results.add(0.0); players.get(m.p2).results.add(1.0); } else if(result==3){ players.get(m.p1).score+=DRAW_PTS; players.get(m.p2).score+=DRAW_PTS; players.get(m.p1).draws++; players.get(m.p2).draws++; players.get(m.p1).results.add(0.5); players.get(m.p2).results.add(0.5); } if(m.p2!=-1){ players.get(m.p1).opponents.add(m.p2); players.get(m.p2).opponents.add(m.p1); } }
               void calcTieBreak(){ for(Player p:players){ double buch=0, sb=0, oppWinSum=0; int valid=0; for(int i=0;i<p.opponents.size();i++){ int oid=p.opponents.get(i); if(oid==-1) continue; Player opp=players.get(oid); buch+=opp.score; double res=p.results.size()>i?p.results.get(i):0; if(res==1) sb+=opp.score; else if(res==0.5) sb+=opp.score*0.5; if(opp.opponents.size()>0){ oppWinSum+=(double)opp.wins/Math.max(1,opp.opponents.size()); valid++; } } p.buchholz=buch; p.sb=sb; p.omw=valid>0?oppWinSum/valid:0; } }
-              ArrayList<Integer> getSortedIdx(){ ArrayList<Integer> idx=new ArrayList<>(); for(int i=0;i<players.size();i++) idx.add(i); Collections.sort(idx,(a,b)->{ Player pa=players.get(a), pb=players.get(b); int cmp=Double.compare(pb.score, pa.score); if(cmp!=0) return cmp; cmp=Integer.compare(pb.wins, pa.wins); if(cmp!=0) return cmp; cmp=Double.compare(pb.omw, pa.omw); if(cmp!=0) return cmp; cmp=Double.compare(pb.buchholz, pa.buchholz); if(cmp!=0) return cmp; return Double.compare(pb.sb, pa.sb); }); return idx; }
-              void showStandings(){ standingLayout.removeAllViews(); TextView t=new TextView(this); t.setText("\n积分榜:"); t.setTextSize(16); t.setTextColor(Color.BLACK); standingLayout.addView(t); ArrayList<Integer> idx=getSortedIdx(); for(int rank=0;rank<idx.size();rank++){ int id=idx.get(rank); Player p=players.get(id); TextView row=new TextView(this); String line=String.format("%d. %s - %d分 [%d-%d-%d] OMW:%d%%", rank+1, p.name, (int)p.score, p.wins, p.draws, p.losses, (int)(p.omw*100)); if(rank<4) line="★ "+line; row.setText(line); row.setPadding(15,12,15,12); row.setBackgroundColor(rank<4? Color.parseColor("#FFF9C4") : (rank%2==0? Color.parseColor("#F5F5F5"): Color.WHITE)); standingLayout.addView(row); } }
-              void showKnockoutEntry(){ if(players.size()<4) return; knockoutLayout.removeAllViews(); Button btn=new Button(this); btn.setText("前4进入淘汰赛"); btn.setBackgroundColor(Color.parseColor("#4CAF50")); btn.setTextColor(Color.WHITE); btn.setOnClickListener(v-> startTop4Knockout()); knockoutLayout.addView(btn); }
-              void startTop4Knockout(){ inKnockout=true; roundLayout.removeAllViews(); ArrayList<Integer> idx=getSortedIdx(); int p1=idx.get(0), p2=idx.get(1), p3=idx.get(2), p4=idx.get(3); semi1=new Match(); semi1.p1=p1; semi1.p2=p4; semi1.label="半决赛1"; semi2=new Match(); semi2.p1=p2; semi2.p2=p3; semi2.label="半决赛2"; finalMatch=null; thirdMatch=null; showTop4Bracket(); }
-              void showTop4Bracket(){ knockoutLayout.removeAllViews(); TextView title=new TextView(this); title.setText("\n=== 前4淘汰赛 ==="); title.setTextSize(20); title.setGravity(Gravity.CENTER); knockoutLayout.addView(title); addMatchView(semi1, true, false); addMatchView(semi2, true, false); if(semi1.result!=0 && semi2.result!=0){ if(finalMatch==null){ int w1=semi1.result==1?semi1.p1:semi1.p2; int w2=semi2.result==1?semi2.p1:semi2.p2; int l1=semi1.result==1?semi1.p2:semi1.p1; int l2=semi2.result==1?semi2.p2:semi2.p1; finalMatch=new Match(); finalMatch.p1=w1; finalMatch.p2=w2; finalMatch.label="决赛"; thirdMatch=new Match(); thirdMatch.p1=l1; thirdMatch.p2=l2; thirdMatch.label="季军赛"; } addMatchView(thirdMatch,false,false); addMatchView(finalMatch,false,false); if(finalMatch.result!=0){ updateCareerAfterTournament(getSortedIdx()); } } }
-              void startFullKnockout(){ if(players.size()<2){ Toast.makeText(this,"至少2人",0).show(); return; } inKnockout=true; roundLayout.removeAllViews(); standingLayout.removeAllViews(); knockoutLayout.removeAllViews(); koRounds.clear(); koCurrent=0; ArrayList<Integer> all=new ArrayList<>(); for(int i=0;i<players.size();i++) all.add(i); Collections.shuffle(all); ArrayList<Match> first=new ArrayList<>(); for(int i=0;i<all.size();i+=2){ Match m=new Match(); m.p1=all.get(i); if(i+1<all.size()) m.p2=all.get(i+1); else { m.p2=-1; m.result=1; } m.label="第1轮"; first.add(m); } koRounds.add(first); showFullKnockout(); }
-              void showFullKnockout(){ knockoutLayout.removeAllViews(); if(koRounds.isEmpty()) return; TextView title=new TextView(this); title.setText("\n=== 全员淘汰赛 ==="); title.setTextSize(20); title.setGravity(Gravity.CENTER); knockoutLayout.addView(title); ArrayList<Match> cur=koRounds.get(koCurrent); TextView rt=new TextView(this); rt.setText("第"+(koCurrent+1)+"轮"); rt.setTextSize(16); knockoutLayout.addView(rt); for(Match m:cur){ if(m.p2==-1){ TextView tv=new TextView(this); tv.setText(players.get(m.p1).name+" 轮空晋级"); knockoutLayout.addView(tv); } else { addMatchView(m,false,true); } } boolean allDone=true; for(Match m:cur) if(m.p2!=-1 && m.result==0) allDone=false; if(allDone){ ArrayList<Integer> winners=new ArrayList<>(); for(Match m:cur){ if(m.p2==-1) winners.add(m.p1); else winners.add(m.result==1?m.p1:m.p2); } if(winners.size()==1){ TextView champView=new TextView(this); champView.setText("\n🏆 冠军: "+players.get(winners.get(0)).name); champView.setTextSize(22); champView.setGravity(Gravity.CENTER); knockoutLayout.addView(champView); updateCareerAfterTournament(getSortedIdx()); } else if(winners.size()>1){ Button next=new Button(this); next.setText("下一轮 ("+winners.size()+"人)"); next.setOnClickListener(v->{ ArrayList<Match> nextRound=new ArrayList<>(); for(int i=0;i<winners.size();i+=2){ Match mm=new Match(); mm.p1=winners.get(i); if(i+1<winners.size()) mm.p2=winners.get(i+1); else { mm.p2=-1; mm.result=1; } nextRound.add(mm); } koRounds.add(nextRound); koCurrent++; showFullKnockout(); }); knockoutLayout.addView(next); } } }
-              void addMatchView(Match m, boolean isSemi, boolean isFull){ if(m==null) return; LinearLayout row=new LinearLayout(this); row.setOrientation(LinearLayout.VERTICAL); row.setPadding(0,12,0,12); TextView label=new TextView(this); String vs=m.p2==-1? players.get(m.p1).name+" 轮空": players.get(m.p1).name+" vs "+players.get(m.p2).name; label.setText(m.label+" : "+vs); label.setTextSize(15); row.addView(label); LinearLayout btnRow=new LinearLayout(this); btnRow.setOrientation(LinearLayout.HORIZONTAL); if(m.result==0 && m.p2!=-1){ Button b1=new Button(this); b1.setText(players.get(m.p1).name+" 胜"); Button b2=new Button(this); b2.setText(players.get(m.p2).name+" 胜"); b1.setOnClickListener(v->{ m.result=1; if(isFull) showFullKnockout(); else showTop4Bracket(); }); b2.setOnClickListener(v->{ m.result=2; if(isFull) showFullKnockout(); else showTop4Bracket(); }); btnRow.addView(b1); btnRow.addView(b2); } else if(m.result!=0){ TextView res=new TextView(this); res.setText(m.result==1?players.get(m.p1).name+" 晋级":players.get(m.p2).name+" 晋级"); res.setTextColor(Color.BLUE); btnRow.addView(res); } row.addView(btnRow); knockoutLayout.addView(row); }
+              ArrayList<Integer> getSortedIdx(){ ArrayList<Integer> idx=new ArrayList<>(); for(int i=0;i<players.size();i++) idx.add(i); Collections.sort(idx,(a,b)->{ Player pa=players.get(a), pb=players.get(b); int cmp=Double.compare(pb.score, pa.score); if(cmp!=0) return cmp; cmp=Integer.compare(pb.wins, pa.wins); if(cmp!=0) return cmp; return Double.compare(pb.omw, pa.omw); }); return idx; }
+              void showStandings(){ standingLayout.removeAllViews(); ArrayList<Integer> idx=getSortedIdx(); for(int rank=0;rank<idx.size();rank++){ int id=idx.get(rank); Player p=players.get(id); TextView row=new TextView(this); row.setText((rank+1)+". "+p.name+" - "+(int)p.score+"分"); row.setPadding(15,12,15,12); row.setBackgroundColor(rank<4? Color.parseColor("#FFF9C4") : Color.WHITE); standingLayout.addView(row); } }
+              void showKnockoutEntry(){ if(players.size()<4) return; Button btn=new Button(this); btn.setText("前4进淘汰赛"); knockoutLayout.addView(btn); btn.setOnClickListener(v-> startTop4Knockout()); }
+              void startTop4Knockout(){ inKnockout=true; roundLayout.removeAllViews(); ArrayList<Integer> idx=getSortedIdx(); semi1=new Match(); semi1.p1=idx.get(0); semi1.p2=idx.get(3); semi1.label="半决赛1"; semi2=new Match(); semi2.p1=idx.get(1); semi2.p2=idx.get(2); semi2.label="半决赛2"; finalMatch=null; showTop4Bracket(); }
+              void showTop4Bracket(){ knockoutLayout.removeAllViews(); addMatchView(semi1,true,false); addMatchView(semi2,true,false); if(semi1.result!=0 && semi2.result!=0){ if(finalMatch==null){ int w1=semi1.result==1?semi1.p1:semi1.p2; int w2=semi2.result==1?semi2.p1:semi2.p2; finalMatch=new Match(); finalMatch.p1=w1; finalMatch.p2=w2; finalMatch.label="决赛"; } addMatchView(finalMatch,false,false); if(finalMatch.result!=0){ ArrayList<Integer> finalOrder=new ArrayList<>(); finalOrder.add(finalMatch.result==1?finalMatch.p1:finalMatch.p2); finalOrder.add(finalMatch.result==1?finalMatch.p2:finalMatch.p1); for(int id: getSortedIdx()) if(!finalOrder.contains(id)) finalOrder.add(id); showSettlement(finalOrder); } } }
+              void startFullKnockout(){ if(players.size()<2) return; inKnockout=true; roundLayout.removeAllViews(); standingLayout.removeAllViews(); knockoutLayout.removeAllViews(); koRounds.clear(); koCurrent=0; ArrayList<Integer> all=new ArrayList<>(); for(int i=0;i<players.size();i++) all.add(i); Collections.shuffle(all); ArrayList<Match> first=new ArrayList<>(); for(int i=0;i<all.size();i+=2){ Match m=new Match(); m.p1=all.get(i); if(i+1<all.size()) m.p2=all.get(i+1); else { m.p2=-1; m.result=1; } first.add(m); } koRounds.add(first); showFullKnockout(); }
+              void showFullKnockout(){ knockoutLayout.removeAllViews(); ArrayList<Match> cur=koRounds.get(koCurrent); for(Match m:cur){ addMatchView(m,false,true); } boolean allDone=true; for(Match m:cur) if(m.p2!=-1 && m.result==0) allDone=false; if(allDone){ ArrayList<Integer> winners=new ArrayList<>(); for(Match m:cur){ if(m.p2==-1) winners.add(m.p1); else winners.add(m.result==1?m.p1:m.p2); } if(winners.size()==1){ ArrayList<Integer> finalOrder=new ArrayList<>(); finalOrder.add(winners.get(0)); for(int id: getSortedIdx()) if(!finalOrder.contains(id)) finalOrder.add(id); showSettlement(finalOrder); } else if(winners.size()>1){ Button next=new Button(this); next.setText("下一轮 ("+winners.size()+"人)"); next.setOnClickListener(v->{ ArrayList<Match> nextRound=new ArrayList<>(); for(int i=0;i<winners.size();i+=2){ Match mm=new Match(); mm.p1=winners.get(i); if(i+1<winners.size()) mm.p2=winners.get(i+1); else { mm.p2=-1; mm.result=1; } nextRound.add(mm); } koRounds.add(nextRound); koCurrent++; showFullKnockout(); }); knockoutLayout.addView(next); } } }
+              void addMatchView(Match m, boolean isSemi, boolean isFull){ if(m==null) return; LinearLayout row=new LinearLayout(this); row.setOrientation(LinearLayout.VERTICAL); row.setPadding(0,12,0,12); TextView label=new TextView(this); String vs=m.p2==-1? players.get(m.p1).name+" 轮空": players.get(m.p1).name+" vs "+players.get(m.p2).name; label.setText(m.label+" : "+vs); row.addView(label); LinearLayout btnRow=new LinearLayout(this); btnRow.setOrientation(LinearLayout.HORIZONTAL); if(m.result==0 && m.p2!=-1){ Button b1=new Button(this); b1.setText(players.get(m.p1).name+" 胜"); Button b2=new Button(this); b2.setText(players.get(m.p2).name+" 胜"); b1.setOnClickListener(v->{ m.result=1; if(isFull) showFullKnockout(); else showTop4Bracket(); }); b2.setOnClickListener(v->{ m.result=2; if(isFull) showFullKnockout(); else showTop4Bracket(); }); btnRow.addView(b1); btnRow.addView(b2); } else if(m.result!=0){ TextView res=new TextView(this); res.setText(m.result==1?players.get(m.p1).name+" 晋级":players.get(m.p2).name+" 晋级"); res.setTextColor(Color.BLUE); btnRow.addView(res); } row.addView(btnRow); knockoutLayout.addView(row); }
           }
           JAVA_EOF
-          sed -i '' 's/9.6.1/8.7/' gradle/wrapper/gradle-wrapper.properties || sed -i 's/9.6.1/8.7/' gradle/wrapper/gradle-wrapper.properties
           rm -f build.gradle.kts build.gradle settings.gradle
           cat > settings.gradle.kts <<'EOF'
           pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
